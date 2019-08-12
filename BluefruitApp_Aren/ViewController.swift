@@ -15,18 +15,32 @@ var blePeripheral : CBPeripheral?
 var txCharacteristic : CBCharacteristic?
 var rxCharacteristic : CBCharacteristic?
 var characteristicASCIIValue = NSString()
+
+// Viewed from the client (mobile device) perspective
 let UART_SERVICE_ID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
 let UART_WRITE_ID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
 let UART_NOTIFICATION_ID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
+
+let PROTOCOL : String  = "v1"
+let DIGEST : String = "sha512"
+let SIGNATURE : String = "ed25519"
+let BLOCK_SIZE : Int = 510
+let KEY_SIZE : Int = 32
+let DIG_SIZE : Int = 64
+let SIG_SIZE : Int = 64
 
 // ViewController class adopts both the central and peripheral delegates and conforms to their protocol's requirements
 class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDelegate {
     
     // Create instance variables of the CBCentralManager and CBPeripheral
     var centralManager: CBCentralManager?
-    var buttonUpPeripheral = [CBPeripheral]()
+    var peripherals_list = [CBPeripheral]()
     var bluetoothOffLabel = 0.0
     var RSSIs = [NSNumber()]
+    
+    // These variables capture the state of the HSM proxy
+    var secret = [UInt8](repeating: 0, count: KEY_SIZE)  // look for unsigned 8-bit int
+    var previousSecret : [UInt8]?
     let BLEService_UUID = CBUUID(string: UART_SERVICE_ID)
     let BLE_Characteristic_uuid_Rx = CBUUID(string: UART_WRITE_ID)
     let BLE_Characteristic_uuid_Tx = CBUUID(string: UART_NOTIFICATION_ID)
@@ -40,10 +54,72 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         disconnectFromDevice()
     }
     
+
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
         centralManager = CBCentralManager(delegate: self, queue: nil)
+    }
+    
+    
+    /**
+     * This function generates a new public-private key pair.
+     *
+     * @returns A byte array containing the new public key.
+     */
+    
+    func generateKeys() -> [Int]{
+        do {
+            if blePeripheral == nil {
+                //            startScan()
+            }
+            let status = SecRandomCopyBytes(kSecRandomDefault, KEY_SIZE, &secret)
+            if status == errSecSuccess { // Always test the status.
+                print(secret)
+                // Prints something different every time you run.
+            }
+            var request : [UInt8] = formatRequest("generateKeys", secret)
+//            var publicKey : [Int] = processRequest(request)
+//            return publicKey
+        } catch {
+            print("A new key pair could not be generated")
+        }
+        return [8]
+    }
+
+    func formatRequest(_ type : String, _ args : [UInt8]?...) -> [UInt8]{
+        var GENERATE_KEYS : UInt8?
+        switch(type) {
+            case "loadBlocks":
+                GENERATE_KEYS = 0
+            case "generateKeys":
+                GENERATE_KEYS = 1
+            case "rotateKeys":
+                GENERATE_KEYS = 2
+            case "eraseKeys":
+                GENERATE_KEYS = 3
+            case "digestBytes":
+                GENERATE_KEYS = 4
+            case "signBytes":
+                GENERATE_KEYS = 5
+            case "validSignature":
+                GENERATE_KEYS = 6
+        default:
+            print("Error: default in switch case")
+        }
+        var request : [UInt8] = [GENERATE_KEYS!, UInt8(args.count)]
+        var length : Int
+        for arg in args{
+            length = arg!.count
+            request += [UInt8(length) >> 8, UInt8(length)]  // the length of this argument
+            request += arg! // the argument bytes
+        }
+        print("Request: \(request)")
+        return request
+    }
+    
+    func processRequest(){
+        print("here")
     }
     
     func centralManagerDidUpdateState(_ central: CBCentralManager){
@@ -84,7 +160,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
         stopScan()
-        self.buttonUpPeripheral.append(peripheral)
+        self.peripherals_list.append(peripheral)
         self.RSSIs.append(RSSI)
         peripheral.delegate = self
         if blePeripheral == nil {
@@ -169,17 +245,6 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
 //            peripheral.discoverDescriptors(for: characteristic)
         }
     }
-        
-//    func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
-//
-//        if characteristic == rxCharacteristic {
-//            if let ASCIIstring = NSString(data: characteristic.value!, encoding: String.Encoding.utf8.rawValue) {
-//                characteristicASCIIValue = ASCIIstring
-//                print("Value Recieved: \((characteristicASCIIValue as String))")
-//                NotificationCenter.default.post(name:NSNotification.Name(rawValue: "Notify"), object: nil)
-//            }
-//        }
-//    }
     
     func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
         print("*******************************************************")
@@ -199,6 +264,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
         print("Disconnected")
+        generateKeys()
     }
     
     

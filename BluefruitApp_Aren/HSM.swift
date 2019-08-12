@@ -11,13 +11,13 @@ import UIKit
 import CoreBluetooth
 
 // Private Attributes
-let PROTOCOL : String  = "v1"
-let DIGEST : String = "sha512"
-let SIGNATURE : String = "ed25519"
-let BLOCK_SIZE : Int = 510
-let KEY_SIZE : Int = 32
-let DIG_SIZE : Int = 64
-let SIG_SIZE : Int = 64
+//let PROTOCOL : String  = "v1"
+//let DIGEST : String = "sha512"
+//let SIGNATURE : String = "ed25519"
+//let BLOCK_SIZE : Int = 510
+//let KEY_SIZE : Int = 32
+//let DIG_SIZE : Int = 64
+//let SIG_SIZE : Int = 64
 
 // Viewed from the client (mobile device) perspective
 //let UART_SERVICE_ID : String = "6e400001b5a3f393e0a9e50e24dcca9e"
