@@ -12,8 +12,8 @@ import CoreBluetooth
 import Foundation
 
 var blePeripheral : CBPeripheral?
-var txCharacteristic : CBCharacteristic?
-var rxCharacteristic : CBCharacteristic?
+var txCharacteristic : CBCharacteristic? // UART_NOTIFICATION_ID
+var rxCharacteristic : CBCharacteristic? // UART_WRITE_ID
 var characteristicASCIIValue = NSString()
 
 // Viewed from the client (mobile device) perspective
@@ -37,6 +37,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     var peripherals_list = [CBPeripheral]()
     var bluetoothOffLabel = 0.0
     var RSSIs = [NSNumber()]
+    var dataString : String?
     
     // These variables capture the state of the HSM proxy
     var secret = [UInt8](repeating: 0, count: KEY_SIZE)  // look for unsigned 8-bit int
@@ -54,7 +55,10 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         disconnectFromDevice()
     }
     
-
+    @IBAction func GenerateKeys(_ sender: UIButton) {
+        generateKeys()
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
@@ -68,7 +72,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
      * @returns A byte array containing the new public key.
      */
     
-    func generateKeys() -> [Int]{
+    func generateKeys(){
         do {
             if blePeripheral == nil {
                 //            startScan()
@@ -79,12 +83,10 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
                 // Prints something different every time you run.
             }
             var request : [UInt8] = formatRequest("generateKeys", secret)
-//            var publicKey : [Int] = processRequest(request)
-//            return publicKey
+            processRequest(request)
         } catch {
             print("A new key pair could not be generated")
         }
-        return [8]
     }
 
     func formatRequest(_ type : String, _ args : [UInt8]?...) -> [UInt8]{
@@ -118,8 +120,52 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         return request
     }
     
-    func processRequest(){
+    func processRequest(_ request : [UInt8]){
+        var buffer : [UInt8]
+        var offset : Int
+        var blockSize : Int
+        var temp : Double = Double(request.count - 2) / Double(BLOCK_SIZE) - 1
+        var extraBlocks : Int = Int(temp.rounded(.up))
+        var block : Int = extraBlocks
+
+        while block > 0{
+            // the offset includes the header bytes
+            offset = block * BLOCK_SIZE + 2
+
+            // calculate the current block size
+            blockSize = min(request.count - offset, BLOCK_SIZE)
+
+            // concatenate a header and the current block bytes
+            buffer = [0x00, UInt8(block)] + Array(request[offset ..< (offset + blockSize)])
+
+            // process the block and ignore the response
+            processBlock(buffer)
+
+            // move on to previous block
+            block -= 1
+        }
+        blockSize = min(request.count, BLOCK_SIZE + 2);
+        buffer = Array(request[0..<blockSize])  // includes the actual header
+        var response = processBlock(buffer)
+        return response
+    }
+
+    func processBlock(_ block : [UInt8]){
+        writeCharacteristic(val: block)
+//        var response = readCharacteristic()
+    }
+
+//    func readCharacteristic() -> [UInt8]{
+//        blePeripheral?.readValue(for: txCharacteristic!)
+//        var readCharacteristic : [UInt8] = UInt8(txCharacteristic!.value!)
+//        return readCharacteristic
+//    }
+
+    func writeCharacteristic(val: [UInt8]){
+        var val = val
+        let ns = NSData(bytes: &val, length: val.count)
         print("here")
+        blePeripheral!.writeValue(ns as Data, for: rxCharacteristic!, type: CBCharacteristicWriteType.withResponse)
     }
     
     func centralManagerDidUpdateState(_ central: CBCentralManager){
@@ -147,6 +193,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
             startScan()
         }
     }
+    
     
     func startScan() {
         print("Now Scanning...")
@@ -262,9 +309,17 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     }
     
     
+    func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
+        if characteristic == txCharacteristic {
+            var data = characteristic.value
+            dataString = String(data: data!, encoding: String.Encoding.utf8)!
+            print("Value Recieved: \(dataString)")
+            }
+    }
+    
+    
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
         print("Disconnected")
-        generateKeys()
     }
     
     
