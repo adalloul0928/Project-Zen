@@ -38,6 +38,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     var bluetoothOffLabel = 0.0
     var RSSIs = [NSNumber()]
     var dataString : String?
+    var publicKey : String?
     
     // These variables capture the state of the HSM proxy
     var secret = [UInt8](repeating: 0, count: KEY_SIZE)  // look for unsigned 8-bit int
@@ -164,7 +165,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     func writeCharacteristic(val: [UInt8]){
         var val = val
         let ns = NSData(bytes: &val, length: val.count)
-        print("here")
+        print("Wrote Characteristic")
         blePeripheral!.writeValue(ns as Data, for: rxCharacteristic!, type: CBCharacteristicWriteType.withResponse)
     }
     
@@ -200,10 +201,12 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         centralManager?.scanForPeripherals(withServices: [BLEService_UUID] , options: nil)
     }
     
+    
     func stopScan(){
         print("stopped scanning")
         centralManager!.stopScan()
     }
+    
     
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
         stopScan()
@@ -219,9 +222,11 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         }
     }
     
+    
     func connectToDevice() {
         centralManager?.connect(blePeripheral!, options: nil)
     }
+    
     
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         print("*****************************")
@@ -238,6 +243,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         peripheral.discoverServices([BLEService_UUID])
     }
     
+    
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         print("*******************************************************")
         
@@ -251,7 +257,6 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         }
         //We need to discover the all characteristic
         for service in services {
-            
             peripheral.discoverCharacteristics(nil, for: service)
         }
         print("Discovered Services: \(services)")
@@ -279,19 +284,27 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
                 rxCharacteristic = characteristic
                 
                 //Once found, subscribe to the this particular characteristic...
-                peripheral.setNotifyValue(true, for: rxCharacteristic!)
+//                peripheral.setNotifyValue(true, for: rxCharacteristic!)
                 // We can return after calling CBPeripheral.setNotifyValue because CBPeripheralDelegate's
                 // didUpdateNotificationStateForCharacteristic method will be called automatically
-                peripheral.readValue(for: characteristic)
+//                peripheral.readValue(for: characteristic)
                 print("Rx Characteristic: \(characteristic.uuid)")
+                
             }
             if characteristic.uuid.isEqual(BLE_Characteristic_uuid_Tx){
                 txCharacteristic = characteristic
                 print("Tx Characteristic: \(characteristic.uuid)")
+                
+                peripheral.setNotifyValue(true, for: txCharacteristic!)
+                // We can return after calling CBPeripheral.setNotifyValue because CBPeripheralDelegate's
+                // didUpdateNotificationStateForCharacteristic method will be called automatically
+                peripheral.readValue(for: characteristic)
+                
             }
 //            peripheral.discoverDescriptors(for: characteristic)
         }
     }
+    
     
     func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
         print("*******************************************************")
@@ -310,11 +323,20 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     
     
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
+        print("Did Update Value Call")
+//        if characteristic == txCharacteristic {
+//            if let ASCIIstring = NSString(data: characteristic.value!, encoding: String.Encoding.utf8.rawValue) {
+//                characteristicASCIIValue = ASCIIstring
+//                print("Value Recieved: \((characteristicASCIIValue as String))")
+//            }
+//        }
         if characteristic == txCharacteristic {
-            var data = characteristic.value
-            dataString = String(data: data!, encoding: String.Encoding.utf8)!
-            print("Value Recieved: \(dataString)")
-            }
+            let characteristicData = characteristic.value!
+            print("Characteristic Data: \(characteristicData)")
+            var byteArray = [UInt8](characteristicData)
+            print("byteArray: \(byteArray)")
+            print("herechar")
+        }
     }
     
     
@@ -331,13 +353,15 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         print("Message sent")
     }
     
-    func peripheral(_ peripheral: CBPeripheral, didWriteValueFor descriptor: CBDescriptor, error: Error?) {
-        guard error == nil else {
-            print("Error discovering services: error")
-            return
-        }
-        print("Succeeded!")
-    }
+    
+//    func peripheral(_ peripheral: CBPeripheral, didWriteValueFor descriptor: CBDescriptor, error: Error?) {
+//        guard error == nil else {
+//            print("Error discovering services: error")
+//            return
+//        }
+//        print("Succeeded!")
+//    }
+    
     
     func disconnectFromDevice () {
         if blePeripheral != nil {
