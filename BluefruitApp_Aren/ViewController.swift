@@ -2,19 +2,14 @@
 //  ViewController.swift
 //  BluefruitApp_Aren
 //
-//  Created by Addison Perrett on 8/8/19.
+//  Created by Aren Dalloul on 8/8/19.
 //  Copyright © 2019 Aren Dalloul. All rights reserved.
 //
 
-import UIKit
 // Import CoreBluetooth for BLE functionality
+import UIKit
 import CoreBluetooth
 import Foundation
-
-var blePeripheral : CBPeripheral?
-var txCharacteristic : CBCharacteristic? // UART_NOTIFICATION_ID
-var rxCharacteristic : CBCharacteristic? // UART_WRITE_ID
-var characteristicASCIIValue = NSString()
 
 // Viewed from the client (mobile device) perspective
 let UART_SERVICE_ID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
@@ -31,10 +26,15 @@ let SIG_SIZE : Int = 64
 
 // ViewController class adopts both the central and peripheral delegates and conforms to their protocol's requirements
 class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDelegate {
+    // Creating blePeripheral object, notification characteristic, and write characteristic
+    var blePeripheral : CBPeripheral?
+    var notifyCharacteristic : CBCharacteristic? // UART_NOTIFICATION_ID
+    var writeCharacteristic : CBCharacteristic? // UART_WRITE_ID
+    var characteristicASCIIValue = NSString()
     
     // Create instance variables of the CBCentralManager and CBPeripheral
-    var centralManager: CBCentralManager?
-    var peripherals_list = [CBPeripheral]()
+    var centralManager: CBCentralManager? // central manager object is the iphone device
+//    var peripherals_list = [CBPeripheral]() //
     var bluetoothOffLabel = 0.0
     var RSSIs = [NSNumber()]
     var dataString : String?
@@ -48,18 +48,26 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     let BLE_Characteristic_uuid_Tx = CBUUID(string: UART_NOTIFICATION_ID)
     
     
+    // Button to connect to the peripheral device (light will stop flashing blue and will be solid blue)
     @IBAction func connectButton(_ sender: UIButton) {
         connectToDevice()
     }
     
+    // Button to disconnect from the peripheral device (light will start flashing blue)
     @IBAction func disconnectButton(_ sender: UIButton) {
         disconnectFromDevice()
     }
     
+    // Button to generate keys (see generate keys function call)
     @IBAction func GenerateKeys(_ sender: UIButton) {
         generateKeys()
     }
     
+    @IBAction func eraseKeys(_ sender: UIButton) {
+        eraseKeys()
+    }
+    
+    // Loads at the start of the application
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
@@ -69,10 +77,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     
     /**
      * This function generates a new public-private key pair.
-     *
-     * @returns A byte array containing the new public key.
      */
-    
     func generateKeys(){
         do {
             if blePeripheral == nil {
@@ -90,6 +95,26 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         }
     }
 
+    /**
+     * This function formats a request into a binary format prior to sending it via bluetooth.
+     * Each request has the following byte format:
+     *   Request (1 byte) [0..255]
+     *   Number of Arguments (1 byte) [0..255]
+     *   Length of Argument 1 (2 bytes) [0..65535]
+     *   Argument 1 ([0..65535] bytes)
+     *   Length of Argument 2 (2 bytes) [0..65535]
+     *   Argument 2 ([0..65535] bytes)
+     *      ...
+     *   Length of Argument N (2 bytes) [0..65535]
+     *   Argument N ([0..65535] bytes)
+     *
+     * If the entire request is only a single byte long then the number of arguments
+     * is assumed to be zero.
+     
+     * @param type A string representing the type of the request.
+     * @param args Zero or more byte arrays containing the bytes for each argument.
+     * @returns A byte array containing the bytes for the entire request.
+     */
     func formatRequest(_ type : String, _ args : [UInt8]?...) -> [UInt8]{
         var GENERATE_KEYS : UInt8?
         switch(type) {
@@ -121,6 +146,15 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         return request
     }
     
+    /**
+     * This function sends a request to a BLEUart service for processing (utilizing the processBlock function)
+     *
+     * Note: A BLEUart service can only handle requests up to 512 bytes in length. If the
+     * specified request is longer than this limit, it is broken up into separate 512 byte
+     * blocks and each block is sent as a separate BLE request.
+     *
+     * @param request A byte array containing the request to be processed.
+     */
     func processRequest(_ request : [UInt8]){
         var buffer : [UInt8]
         var offset : Int
@@ -147,28 +181,36 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         }
         blockSize = min(request.count, BLOCK_SIZE + 2);
         buffer = Array(request[0..<blockSize])  // includes the actual header
-        var response = processBlock(buffer)
-        return response
+        processBlock(buffer)
+//        return response
     }
 
+    /**
+     * This function...
+     *
+     * @param request A byte array containing the request to be processed.
+     */
     func processBlock(_ block : [UInt8]){
         writeCharacteristic(val: block)
-//        var response = readCharacteristic()
     }
 
-//    func readCharacteristic() -> [UInt8]{
-//        blePeripheral?.readValue(for: txCharacteristic!)
-//        var readCharacteristic : [UInt8] = UInt8(txCharacteristic!.value!)
-//        return readCharacteristic
-//    }
-
+    /**
+     * This function writes the block to the peripheral device.
+     *
+     * @param request A byte array containing the request to be processed.
+     */
     func writeCharacteristic(val: [UInt8]){
-        var val = val
-        let ns = NSData(bytes: &val, length: val.count)
+        let ns = NSData(bytes: val, length: val.count)
         print("Wrote Characteristic")
-        blePeripheral!.writeValue(ns as Data, for: rxCharacteristic!, type: CBCharacteristicWriteType.withResponse)
+        blePeripheral!.writeValue(ns as Data, for: writeCharacteristic!, type: CBCharacteristicWriteType.withResponse)
     }
     
+    
+    /**
+     * This function is called to check that your device (iPhone) has bluetooth on
+     *
+     * @param request The CentralManager object representing the central (iPhone)
+     */
     func centralManagerDidUpdateState(_ central: CBCentralManager){
         print("CentralManager is initialized")
         
@@ -196,21 +238,28 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     }
     
     
+    /**
+     * This function is called to start scanning for peripherals specifically with the correct services.
+     */
     func startScan() {
         print("Now Scanning...")
         centralManager?.scanForPeripherals(withServices: [BLEService_UUID] , options: nil)
     }
     
-    
+    /**
+     * This function is called to stop scanning for peripherals.
+     */
     func stopScan(){
         print("stopped scanning")
         centralManager!.stopScan()
     }
     
-    
+    /**
+     * This function is called after discovering the correct peripheral.
+     */
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
-        stopScan()
-        self.peripherals_list.append(peripheral)
+//        stopScan()
+//        self.peripherals_list.append(peripheral)
         self.RSSIs.append(RSSI)
         peripheral.delegate = self
         if blePeripheral == nil {
@@ -223,19 +272,25 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     }
     
     
+    /**
+     * This function is connected to the "Connect" button to connect to the peripheral we found and will automatically
+     * call the "didConnect" function below.
+     */
     func connectToDevice() {
         centralManager?.connect(blePeripheral!, options: nil)
     }
     
     
+    /**
+     * After connecting, this function is automatically called
+     */
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         print("*****************************")
         print("Connection complete")
         print("Peripheral info: \(blePeripheral)")
         
         //Stop Scan- We don't need to scan once we've connected to a peripheral. We got what we came for.
-        centralManager?.stopScan()
-        print("Scan Stopped")
+        stopScan()
         
         //Discovery callback
         peripheral.delegate = self
@@ -262,6 +317,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         print("Discovered Services: \(services)")
     }
     
+    
     func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
         
         print("*******************************************************")
@@ -281,7 +337,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
             //looks for the right characteristic
             
             if characteristic.uuid.isEqual(BLE_Characteristic_uuid_Rx)  {
-                rxCharacteristic = characteristic
+                writeCharacteristic = characteristic
                 
                 //Once found, subscribe to the this particular characteristic...
 //                peripheral.setNotifyValue(true, for: rxCharacteristic!)
@@ -292,16 +348,14 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
                 
             }
             if characteristic.uuid.isEqual(BLE_Characteristic_uuid_Tx){
-                txCharacteristic = characteristic
+                notifyCharacteristic = characteristic
                 print("Tx Characteristic: \(characteristic.uuid)")
                 
-                peripheral.setNotifyValue(true, for: txCharacteristic!)
+                peripheral.setNotifyValue(true, for: notifyCharacteristic!)
                 // We can return after calling CBPeripheral.setNotifyValue because CBPeripheralDelegate's
                 // didUpdateNotificationStateForCharacteristic method will be called automatically
                 peripheral.readValue(for: characteristic)
-                
             }
-//            peripheral.discoverDescriptors(for: characteristic)
         }
     }
     
@@ -323,19 +377,12 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     
     
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
-        print("Did Update Value Call")
-//        if characteristic == txCharacteristic {
-//            if let ASCIIstring = NSString(data: characteristic.value!, encoding: String.Encoding.utf8.rawValue) {
-//                characteristicASCIIValue = ASCIIstring
-//                print("Value Recieved: \((characteristicASCIIValue as String))")
-//            }
-//        }
-        if characteristic == txCharacteristic {
+        print("Update Value Call")
+        if characteristic == notifyCharacteristic {
             let characteristicData = characteristic.value!
             print("Characteristic Data: \(characteristicData)")
             var byteArray = [UInt8](characteristicData)
             print("byteArray: \(byteArray)")
-            print("herechar")
         }
     }
     
@@ -354,20 +401,26 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     }
     
     
-//    func peripheral(_ peripheral: CBPeripheral, didWriteValueFor descriptor: CBDescriptor, error: Error?) {
-//        guard error == nil else {
-//            print("Error discovering services: error")
-//            return
-//        }
-//        print("Succeeded!")
-//    }
-    
-    
     func disconnectFromDevice () {
         if blePeripheral != nil {
             centralManager?.cancelPeripheralConnection(blePeripheral!)
         }
     }
-
+    
+    
+    /**
+     * This function deletes any existing public-private key pairs.
+     *
+     * @returns Whether or not the keys were successfully erased.
+     */
+    func eraseKeys(){
+//        do {
+//            if (peripheral == null) initializeAPI()
+            var request : [UInt8] = formatRequest("eraseKeys")
+            processRequest(request)
+//        } catch (cause) {
+//            throw Error("The public-private key pairs could not be erased: \(cause)")
+//        }
+    }
 }
 
