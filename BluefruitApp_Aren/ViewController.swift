@@ -36,19 +36,23 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     var centralManager: CBCentralManager? // central manager object is the iphone device
 //    var peripherals_list = [CBPeripheral]() //
     var bluetoothOffLabel = 0.0
-    var RSSIs = [NSNumber()]
-    var dataString : String?
-    var publicKey : String?
+    var RSSIs = [NSNumber()] // DONT THINK WE NEED THIS
     
-    // These variables capture the state of the HSM proxy
-    var secret = [UInt8](repeating: 0, count: KEY_SIZE)  // look for unsigned 8-bit int
     // Dummy variable to test signbytes
     var test = [UInt8](repeating: 0, count: KEY_SIZE)
     lazy var testStatus = SecRandomCopyBytes(kSecRandomDefault, KEY_SIZE, &test)
+    
+    // These variables capture the state of the HSM proxy
+    var publicKey : [UInt8]?
+    var secret = [UInt8](repeating: 0, count: KEY_SIZE)  // look for unsigned 8-bit int
     var previousSecret : [UInt8]?
+    var signedBytes : [UInt8]?
     let BLEService_UUID = CBUUID(string: UART_SERVICE_ID)
     let BLE_Characteristic_uuid_Rx = CBUUID(string: UART_WRITE_ID)
     let BLE_Characteristic_uuid_Tx = CBUUID(string: UART_NOTIFICATION_ID)
+    
+    // Global variable to know what request we've made to check in func checkResponse()
+    var REQUEST_TYPE : UInt8?
     
     
     // Button to connect to the peripheral device (light will stop flashing blue and will be solid blue)
@@ -125,26 +129,25 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
      * @returns A byte array containing the bytes for the entire request.
      */
     func formatRequest(_ type : String, _ args : [UInt8]?...) -> [UInt8]{
-        var GENERATE_KEYS : UInt8?
         switch(type) {
             case "loadBlocks":
-                GENERATE_KEYS = 0
+                REQUEST_TYPE = 0
             case "generateKeys":
-                GENERATE_KEYS = 1
+                REQUEST_TYPE = 1
             case "rotateKeys":
-                GENERATE_KEYS = 2
+                REQUEST_TYPE = 2
             case "eraseKeys":
-                GENERATE_KEYS = 3
+                REQUEST_TYPE = 3
             case "digestBytes":
-                GENERATE_KEYS = 4
+                REQUEST_TYPE = 4
             case "signBytes":
-                GENERATE_KEYS = 5
+                REQUEST_TYPE = 5
             case "validSignature":
-                GENERATE_KEYS = 6
+                REQUEST_TYPE = 6
         default:
             print("Error: default in switch case")
         }
-        var request : [UInt8] = [GENERATE_KEYS!, UInt8(args.count)]
+        var request : [UInt8] = [REQUEST_TYPE!, UInt8(args.count)]
         var length : Int
         for arg in args{
             length = arg!.count
@@ -413,7 +416,56 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
             let characteristicData = characteristic.value!
             print("Characteristic Data: \(characteristicData)")
             var byteArray = [UInt8](characteristicData)
-            print("byteArray: \(byteArray)")
+            if byteArray.count > 0{
+                checkResponse(response : byteArray)
+            }
+//            print("byteArray: \(byteArray)")
+        }
+    }
+    
+    func checkResponse(response : [UInt8]){
+        if response[0] == 255{
+            print("Case \(REQUEST_TYPE): Failed 255")
+        }
+        else{
+            switch(REQUEST_TYPE) {
+            case 0:
+                print("CASE Processing Blocks - NEED TO IMPLEMENT")
+            case 1:
+                print("Generate Keys: ")
+                if response.count == 32{
+                    publicKey = response
+                    print("Public Key: \(publicKey)")
+                }
+            case 2:
+                print("CASE Rotate Keys - NEED TO IMPLEMENT")
+            case 3:
+                print("Erase Keys: ")
+                if response[0] == 1{
+                    print("SUCCESS")
+                }
+                else if response[1] == 0{
+                    print("Did Not Erase Keys")
+                }
+            case 4:
+                print("CASE Digest Bytes - NEED TO IMPLEMENT")
+            case 5:
+                print("Sign Bytes: ")
+                if response.count == 64{
+                    signedBytes = response
+                    print("Signed Bytes: \(signedBytes)")
+                }
+            case 6:
+                print("Signature Valid: ")
+                if response[0] == 1{
+                    print("Signature Valid")
+                }
+                else if response[1] == 0{
+                    print("Signature NOT Valid")
+                }
+            default:
+                print("Error: default in switch case")
+            }
         }
     }
     
