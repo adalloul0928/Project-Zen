@@ -42,6 +42,9 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     
     // These variables capture the state of the HSM proxy
     var secret = [UInt8](repeating: 0, count: KEY_SIZE)  // look for unsigned 8-bit int
+    // Dummy variable to test signbytes
+    var test = [UInt8](repeating: 0, count: KEY_SIZE)
+    lazy var testStatus = SecRandomCopyBytes(kSecRandomDefault, KEY_SIZE, &test)
     var previousSecret : [UInt8]?
     let BLEService_UUID = CBUUID(string: UART_SERVICE_ID)
     let BLE_Characteristic_uuid_Rx = CBUUID(string: UART_WRITE_ID)
@@ -60,11 +63,16 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     
     // Button to generate keys (see generate keys function call)
     @IBAction func GenerateKeys(_ sender: UIButton) {
+//        connectToDevice()
         generateKeys()
     }
     
     @IBAction func eraseKeys(_ sender: UIButton) {
         eraseKeys()
+    }
+    
+    @IBAction func signBytes(_ sender: UIButton) {
+        signBytes(test)
     }
     
     // Loads at the start of the application
@@ -81,7 +89,8 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     func generateKeys(){
         do {
             if blePeripheral == nil {
-                //            startScan()
+                print("Not Connected to Device")
+                // FIX TO THROW ERROR IF NOT CONNECTED TO DEVICE
             }
             let status = SecRandomCopyBytes(kSecRandomDefault, KEY_SIZE, &secret)
             if status == errSecSuccess { // Always test the status.
@@ -182,7 +191,6 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         blockSize = min(request.count, BLOCK_SIZE + 2);
         buffer = Array(request[0..<blockSize])  // includes the actual header
         processBlock(buffer)
-//        return response
     }
 
     /**
@@ -203,6 +211,29 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         let ns = NSData(bytes: val, length: val.count)
         print("Wrote Characteristic")
         blePeripheral!.writeValue(ns as Data, for: writeCharacteristic!, type: CBCharacteristicWriteType.withResponse)
+    }
+    
+    
+    /**
+     * This function generates a digital signature of the specified bytes using
+     * the current private key (or the old private key, one time only, if it exists).
+     * This allows a new certificate to be signed using the previous private key.
+     * The resulting digital signature can then be verified using the corresponding
+     * public key.
+     *
+     * @param bytes A byte array containing the bytes to be digitally signed.
+     * @returns A byte array containing the resulting digital signature.
+     */
+    func signBytes(_ bytes : [UInt8]) {
+        var request : [UInt8]
+        if (previousSecret != nil) {
+        // we are in the process of rotating keys so use the previous secret
+            request = formatRequest("signBytes", previousSecret, bytes)
+            previousSecret = nil
+        } else {
+            request = formatRequest("signBytes", secret, bytes)
+        }
+        processRequest(request)
     }
     
     
