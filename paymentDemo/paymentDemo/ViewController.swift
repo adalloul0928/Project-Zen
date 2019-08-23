@@ -1,8 +1,8 @@
 //
 //  ViewController.swift
-//  BluefruitApp_Aren
+//  paymentDemo
 //
-//  Created by Aren Dalloul on 8/8/19.
+//  Created by Aren Dalloul on 8/23/19.
 //  Copyright © 2019 Aren Dalloul. All rights reserved.
 //
 
@@ -26,6 +26,7 @@ let SIG_SIZE : Int = 64
 
 // ViewController class adopts both the central and peripheral delegates and conforms to their protocol's requirements
 class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDelegate {
+
     // Creating blePeripheral object, notification characteristic, and write characteristic
     var blePeripheral : CBPeripheral?
     var notifyCharacteristic : CBCharacteristic? // UART_NOTIFICATION_ID
@@ -34,9 +35,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     
     // Create instance variables of the CBCentralManager and CBPeripheral
     var centralManager: CBCentralManager? // central manager object is the iphone device
-//    var peripherals_list = [CBPeripheral]() //
     var bluetoothOffLabel = 0.0
-    var RSSIs = [NSNumber()] // DONT THINK WE NEED THIS
     
     // Dummy variable to test signbytes
     var test = [UInt8](repeating: 0, count: KEY_SIZE)
@@ -53,47 +52,13 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     
     // Global variable to know what request we've made to check in func checkResponse()
     var REQUEST_TYPE : UInt8?
-    
-    
-    // Button to connect to the peripheral device (light will stop flashing blue and will be solid blue)
-    @IBAction func connectButton(_ sender: UIButton) {
-        connectToDevice()
-    }
-    
-    // Button to disconnect from the peripheral device (light will start flashing blue)
-    @IBAction func disconnectButton(_ sender: UIButton) {
-        disconnectFromDevice()
-    }
-    
-    // Button to generate keys (see generate keys function call)
-    @IBAction func GenerateKeys(_ sender: UIButton) {
-//        connectToDevice()
-        generateKeys()
-    }
-    
-    @IBAction func rotateKeys(_ sender: UIButton) {
-        rotateKeys()
-    }
-    
-    @IBAction func signBytes(_ sender: UIButton) {
-        signBytes(test)
-    }
-    
-    @IBAction func eraseKeys(_ sender: UIButton) {
-        eraseKeys()
-    }
-    
-    @IBAction func signatureValid(_ sender: UIButton) {
-        validSignature(aPublicKey : publicKey!, signature : signedBytes!, bytes : test)
-    }
-    
-    // Loads at the start of the application
+
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
         centralManager = CBCentralManager(delegate: self, queue: nil)
     }
-    
+
     
     /**
      * This function generates a new public-private key pair.
@@ -136,13 +101,8 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
      * @returns Whether or not the keys were successfully erased.
      */
     func eraseKeys(){
-        //        do {
-        //            if (peripheral == null) initializeAPI()
         var request : [UInt8] = formatRequest("eraseKeys")
         processRequest(request)
-        //        } catch (cause) {
-        //            throw Error("The public-private key pairs could not be erased: \(cause)")
-        //        }
     }
     
     
@@ -185,7 +145,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         var request : [UInt8] = formatRequest("validSignature", aPublicKey, signature, bytes)
         processRequest(request)
     }
-
+    
     
     /**
      * This function formats a request into a binary format prior to sending it via bluetooth.
@@ -209,20 +169,20 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
      */
     func formatRequest(_ type : String, _ args : [UInt8]?...) -> [UInt8]{
         switch(type) {
-            case "loadBlocks":
-                REQUEST_TYPE = 0
-            case "generateKeys":
-                REQUEST_TYPE = 1
-            case "rotateKeys":
-                REQUEST_TYPE = 2
-            case "eraseKeys":
-                REQUEST_TYPE = 3
-            case "digestBytes":
-                REQUEST_TYPE = 4
-            case "signBytes":
-                REQUEST_TYPE = 5
-            case "validSignature":
-                REQUEST_TYPE = 6
+        case "loadBlocks":
+            REQUEST_TYPE = 0
+        case "generateKeys":
+            REQUEST_TYPE = 1
+        case "rotateKeys":
+            REQUEST_TYPE = 2
+        case "eraseKeys":
+            REQUEST_TYPE = 3
+        case "digestBytes":
+            REQUEST_TYPE = 4
+        case "signBytes":
+            REQUEST_TYPE = 5
+        case "validSignature":
+            REQUEST_TYPE = 6
         default:
             print("Error: default in switch case")
         }
@@ -236,6 +196,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         print("Request: \(request)")
         return request
     }
+    
     
     /**
      * This function sends a request to a BLEUart service for processing (utilizing the processBlock function)
@@ -253,20 +214,20 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         var temp : Double = Double(request.count - 2) / Double(BLOCK_SIZE) - 1
         var extraBlocks : Int = Int(temp.rounded(.up))
         var block : Int = extraBlocks
-
+        
         while block > 0{
             // the offset includes the header bytes
             offset = block * BLOCK_SIZE + 2
-
+            
             // calculate the current block size
             blockSize = min(request.count - offset, BLOCK_SIZE)
-
+            
             // concatenate a header and the current block bytes
             buffer = [0x00, UInt8(block)] + Array(request[offset ..< (offset + blockSize)])
-
+            
             // process the block and ignore the response
             processBlock(buffer)
-
+            
             // move on to previous block
             block -= 1
         }
@@ -274,7 +235,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         buffer = Array(request[0..<blockSize])  // includes the actual header
         processBlock(buffer)
     }
-
+    
     
     /**
      * This function...
@@ -284,7 +245,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     func processBlock(_ block : [UInt8]){
         writeCharacteristic(val: block)
     }
-
+    
     
     /**
      * This function writes the block to the peripheral device.
@@ -338,6 +299,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         centralManager?.scanForPeripherals(withServices: [BLEService_UUID] , options: nil)
     }
     
+    
     /**
      * This function is called to stop scanning for peripherals.
      */
@@ -346,13 +308,11 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         centralManager!.stopScan()
     }
     
+    
     /**
      * This function is called after discovering the correct peripheral.
      */
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
-//        stopScan()
-//        self.peripherals_list.append(peripheral)
-        self.RSSIs.append(RSSI)
         peripheral.delegate = self
         if blePeripheral == nil {
             print("We found a new pheripheral devices with services")
@@ -361,6 +321,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
             print ("Advertisement Data : \(advertisementData)")
             blePeripheral = peripheral
         }
+        connectToDevice()
     }
     
     
@@ -432,10 +393,10 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
                 writeCharacteristic = characteristic
                 
                 //Once found, subscribe to the this particular characteristic...
-//                peripheral.setNotifyValue(true, for: rxCharacteristic!)
+                //                peripheral.setNotifyValue(true, for: rxCharacteristic!)
                 // We can return after calling CBPeripheral.setNotifyValue because CBPeripheralDelegate's
                 // didUpdateNotificationStateForCharacteristic method will be called automatically
-//                peripheral.readValue(for: characteristic)
+                //                peripheral.readValue(for: characteristic)
                 print("Rx Characteristic: \(characteristic.uuid)")
                 
             }
@@ -449,6 +410,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
                 peripheral.readValue(for: characteristic)
             }
         }
+        generateKeys()
     }
     
     
@@ -466,8 +428,8 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
             print ("Subscribed. Notification has begun for: \(characteristic.uuid)")
         }
     }
-    
-    
+
+
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         print("Update Value Call")
         if characteristic == notifyCharacteristic {
@@ -477,10 +439,10 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
             if byteArray.count > 0{
                 checkResponse(response : byteArray)
             }
-//            print("byteArray: \(byteArray)")
         }
     }
-    
+
+
     func checkResponse(response : [UInt8]){
         if response[0] == 255{
             print("Case \(REQUEST_TYPE): Failed 255")
@@ -551,5 +513,51 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
             centralManager?.cancelPeripheralConnection(blePeripheral!)
         }
     }
+
+    
+    // define the template document for a certificate
+    let template = """
+[
+    $component: [
+        $protocol: v1
+        $timestamp: <{timestamp}>
+        $accountTag: #{accountTag}
+        $publicKey: '{publicKey}'
+    ](
+        $type: /bali/notary/Certificate/v1
+        $tag: #{documentTag}
+        $version: v1
+        $permissions: /bali/permissions/public/v1
+        $previous: none
+    )
+    $protocol: v1
+    $timestamp: <{timestamp}>
+    $certificate: none
+    $signature: '
+{signature}
+    '
+](
+    $type: /bali/notary/Document/v1
+)
+"""
+    
+//    func generateCertificate(accountTag: String, publicKey: String, signature: String) -> String {
+//        // format the current timestamp
+//        let now = NSDate()
+//        let formatter = NSDateFormatter()
+//        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS"
+//        formatter.timeZone = NSTimeZone(forSecondsFromGMT: 0)
+//        let timestamp = formatter.stringFromDate(now)
+//
+//        // generate a new document tag
+//        let documentTag = randomTag()
+//
+//        // fill in certificate document
+//        var certificate = template.replacingOccurrences(of: "{timestamp}", with: timestamp)
+//        certificate = certificate.replacingOccurrences(of: "{documentTag}", with: documentTag)
+//        certificate = certificate.replacingOccurrences(of: "{accountTag}", with: accountTag)
+//        certificate = certificate.replacingOccurrences(of: "{publicKey}", with: publicKey)
+//        return certificate
+//    }
 }
 
