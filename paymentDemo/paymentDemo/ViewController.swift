@@ -52,13 +52,32 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     
     // Global variable to know what request we've made to check in func checkResponse()
     var REQUEST_TYPE : UInt8?
-
+    
+    // Timer for connecting to peripheral - will display "not connected" after 10 seconds if cannot find peripheral
+    var connected = false
+    
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
         centralManager = CBCentralManager(delegate: self, queue: nil)
+        PayMerchant.isHidden = true
     }
+    
 
+    @IBOutlet weak var PayMerchant: UIButton!
+    
+    @IBAction func buttonPressed(_ sender: UIButton) {
+        var alertMessage : String = """
+AccountId: A4TXD731BBY
+Merchant: Starbucks
+Date: 2019-08-18
+Time: 11:30:00 AM
+Amount: $6.95
+"""
+        generateAlert(alertMessage)
+    }
+    
     
     /**
      * This function generates a new public-private key pair.
@@ -266,7 +285,6 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
      */
     func centralManagerDidUpdateState(_ central: CBCentralManager){
         print("CentralManager is initialized")
-        
         switch central.state {
         case .unknown:
             print("Bluetooth status is UNKNOWN")
@@ -297,6 +315,13 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     func startScan() {
         print("Now Scanning...")
         centralManager?.scanForPeripherals(withServices: [BLEService_UUID] , options: nil)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) { // Change `10.0` to the desired number of seconds.
+            // Code you want to be delayed
+            if self.connected == false{
+                ProgressHUD.showError("No Connection")
+                self.stopScan()
+            }
+        }
     }
     
     
@@ -338,6 +363,9 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
      * After connecting, this function is automatically called
      */
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
+        ProgressHUD.showSuccess("Connected")
+        PayMerchant.isHidden = false
+        connected = true
         print("*****************************")
         print("Connection complete")
         print("Peripheral info: \(blePeripheral)")
@@ -495,6 +523,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     
     
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
+        ProgressHUD.showError("Disconnected")
         print("Disconnected")
     }
     
@@ -508,12 +537,29 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     }
     
     
-    func disconnectFromDevice () {
+    func disconnectFromDevice() {
         if blePeripheral != nil {
             centralManager?.cancelPeripheralConnection(blePeripheral!)
         }
     }
+    
+    
+    func payTheBill(){
+        print("Paid the Bill")
+    }
 
+    
+    func generateAlert (_ alertMessage: String){
+        let alert = UIAlertController(title: "Pay Merchant", message: alertMessage, preferredStyle: .alert)
+        let payAction = UIAlertAction(title: "Restart", style: .default, handler: { (UIAlertAction) in self.payTheBill()})
+        let cancelPayment = UIAlertAction(title: "Cancel", style: UIAlertAction.Style.cancel, handler: nil)
+        
+        alert.addAction(payAction)
+        alert.addAction(cancelPayment)
+        
+        present(alert, animated: true, completion: nil)
+    }
+        
     
     // define the template document for a certificate
     let template = """

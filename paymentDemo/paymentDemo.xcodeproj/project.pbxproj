@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		169F5DF223108C4200AAD47E /* ProgressHUD.bundle in Resources */ = {isa = PBXBuildFile; fileRef = 169F5DEF23108C4100AAD47E /* ProgressHUD.bundle */; };
+		169F5DF323108C4200AAD47E /* ProgressHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = 169F5DF123108C4200AAD47E /* ProgressHUD.m */; };
 		16AD5A0D23107125001797FD /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16AD5A0C23107125001797FD /* AppDelegate.swift */; };
 		16AD5A0F23107125001797FD /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16AD5A0E23107125001797FD /* ViewController.swift */; };
 		16AD5A1223107125001797FD /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 16AD5A1023107125001797FD /* Main.storyboard */; };
@@ -15,6 +17,10 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		169F5DEE23108C4100AAD47E /* paymentDemo-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "paymentDemo-Bridging-Header.h"; sourceTree = "<group>"; };
+		169F5DEF23108C4100AAD47E /* ProgressHUD.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = ProgressHUD.bundle; sourceTree = "<group>"; };
+		169F5DF023108C4200AAD47E /* ProgressHUD.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ProgressHUD.h; sourceTree = "<group>"; };
+		169F5DF123108C4200AAD47E /* ProgressHUD.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ProgressHUD.m; sourceTree = "<group>"; };
 		16AD5A0923107125001797FD /* paymentDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = paymentDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		16AD5A0C23107125001797FD /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		16AD5A0E23107125001797FD /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
@@ -35,11 +41,23 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		169F5DED23108BFF00AAD47E /* Support */ = {
+			isa = PBXGroup;
+			children = (
+				169F5DEF23108C4100AAD47E /* ProgressHUD.bundle */,
+				169F5DF023108C4200AAD47E /* ProgressHUD.h */,
+				169F5DF123108C4200AAD47E /* ProgressHUD.m */,
+				169F5DEE23108C4100AAD47E /* paymentDemo-Bridging-Header.h */,
+			);
+			path = Support;
+			sourceTree = "<group>";
+		};
 		16AD5A0023107125001797FD = {
 			isa = PBXGroup;
 			children = (
 				16AD5A0B23107125001797FD /* paymentDemo */,
 				16AD5A0A23107125001797FD /* Products */,
+				169F5DED23108BFF00AAD47E /* Support */,
 			);
 			sourceTree = "<group>";
 		};
@@ -96,6 +114,7 @@
 				TargetAttributes = {
 					16AD5A0823107125001797FD = {
 						CreatedOnToolsVersion = 10.3;
+						LastSwiftMigration = 1030;
 					};
 				};
 			};
@@ -122,6 +141,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				169F5DF223108C4200AAD47E /* ProgressHUD.bundle in Resources */,
 				16AD5A1723107126001797FD /* LaunchScreen.storyboard in Resources */,
 				16AD5A1423107126001797FD /* Assets.xcassets in Resources */,
 				16AD5A1223107125001797FD /* Main.storyboard in Resources */,
@@ -135,6 +155,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				169F5DF323108C4200AAD47E /* ProgressHUD.m in Sources */,
 				16AD5A0F23107125001797FD /* ViewController.swift in Sources */,
 				16AD5A0D23107125001797FD /* AppDelegate.swift in Sources */,
 			);
@@ -282,6 +303,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 9N64WT56H7;
 				INFOPLIST_FILE = paymentDemo/Info.plist;
@@ -291,6 +313,8 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.ArenDalloul.paymentDemo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OBJC_BRIDGING_HEADER = "Support/paymentDemo-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -300,6 +324,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 9N64WT56H7;
 				INFOPLIST_FILE = paymentDemo/Info.plist;
@@ -309,6 +334,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.ArenDalloul.paymentDemo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OBJC_BRIDGING_HEADER = "Support/paymentDemo-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
