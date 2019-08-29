@@ -32,6 +32,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     var notifyCharacteristic : CBCharacteristic? // UART_NOTIFICATION_ID
     var writeCharacteristic : CBCharacteristic? // UART_WRITE_ID
     var characteristicASCIIValue = NSString()
+    var validSignatureBool : Bool = false
     
     // Create instance variables of the CBCentralManager and CBPeripheral
     var centralManager: CBCentralManager? // central manager object is the iphone device
@@ -40,6 +41,10 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     // Dummy variable to test signbytes
     var test = [UInt8](repeating: 0, count: KEY_SIZE)
     lazy var testStatus = SecRandomCopyBytes(kSecRandomDefault, KEY_SIZE, &test)
+    
+    // Dummy variable to test failure. Will delete later when not needed! Used for signatureValid
+    var badtest = [UInt8](repeating: 0, count: KEY_SIZE)
+    lazy var testBadStatus = SecRandomCopyBytes(kSecRandomDefault, KEY_SIZE, &badtest)
     
     // These variables capture the state of the HSM proxy
     var publicKey : [UInt8]?
@@ -56,18 +61,45 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     // Timer for connecting to peripheral - will display "not connected" after 10 seconds if cannot find peripheral
     var connected = false
     
+    // To save the generated key
+    let defaults = UserDefaults.standard
+    var savedPublicValue : [UInt8]?
+    var savedSecret : [UInt8]?
+    
+    struct Keys {
+        static let savedPublicKey = "savedPublicKey"
+        static let savedPrivateKey = "savedPrivateKey"
+    }
+    
     
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
         centralManager = CBCentralManager(delegate: self, queue: nil)
-        PayMerchant.isHidden = true
+        checkForKeys()
+//        PayMerchant.isHidden = true
     }
     
 
     @IBOutlet weak var PayMerchant: UIButton!
     
+    @IBAction func TEST(_ sender: UIButton) {
+        eraseKeys()
+        savedPublicValue = nil
+        savedSecret = nil
+        saveSecretKeyValue()
+        savePublicKeyValue()
+    }
+    
     @IBAction func buttonPressed(_ sender: UIButton) {
+        connectToDevice()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { // Change `10.0` to the desired number of seconds.
+            if self.publicKey == nil{
+                print("public key is nil")
+                print(self.publicKey)
+                self.generateKeys()
+            }
+        }
         var alertMessage : String = """
 AccountId: A4TXD731BBY
 Merchant: Starbucks
@@ -75,7 +107,9 @@ Date: 2019-08-18
 Time: 11:30:00 AM
 Amount: $6.95
 """
-        generateAlert(alertMessage)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { // Change `10.0` to the desired number of seconds.
+            self.generateAlert(alertMessage)
+        }
     }
     
     
@@ -346,7 +380,6 @@ Amount: $6.95
             print ("Advertisement Data : \(advertisementData)")
             blePeripheral = peripheral
         }
-        connectToDevice()
     }
     
     
@@ -364,7 +397,7 @@ Amount: $6.95
      */
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         ProgressHUD.showSuccess("Connected")
-        PayMerchant.isHidden = false
+//        PayMerchant.isHidden = false
         connected = true
         print("*****************************")
         print("Connection complete")
@@ -438,7 +471,6 @@ Amount: $6.95
                 peripheral.readValue(for: characteristic)
             }
         }
-        generateKeys()
     }
     
     
@@ -483,9 +515,15 @@ Amount: $6.95
                 print("Generate Keys: ")
                 if response.count == 32{
                     publicKey = response
+                    savedPublicValue = publicKey
+                    savedSecret = secret
+                    savePublicKeyValue()
+                    saveSecretKeyValue()
                     print("Public Key: \(publicKey)")
+                    print("Secret: \(secret)")
                 }
             case 2:
+                // Add in saving default values
                 print("Rotate Keys: ")
                 if response.count == 32{
                     publicKey = response
@@ -506,17 +544,30 @@ Amount: $6.95
                 if response.count == 64{
                     signedBytes = response
                     print("Signed Bytes: \(signedBytes)")
+                    ProgressHUD.showSuccess("Payment Success")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                        self.disconnectFromDevice()
+                    }
+                }
+                else{
+                    ProgressHUD.showError("Payment Failed")
                 }
             case 6:
                 print("Signature Valid: ")
                 if response[0] == 1{
-                    print("Signature Valid")
+                    validSignatureBool = true // may not need??
+                    print("ISVALID PAYMENT")
+//                    ProgressHUD.showSuccess("Payment Success")
+                    
                 }
                 else if response[1] == 0{
                     print("Signature NOT Valid")
+//                    ProgressHUD.showError("Payment Failed")
                 }
+                
             default:
                 print("Error: default in switch case")
+                print("Response: \(response)")
             }
         }
     }
@@ -545,13 +596,19 @@ Amount: $6.95
     
     
     func payTheBill(){
+//        let buf: [UInt8] = Array("test".utf8)
         print("Paid the Bill")
+        signBytes(test)
+//        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { // Change `1.0` to the desired number of seconds.
+//            // Code you want to be delayed
+//            self.validSignature(aPublicKey : self.publicKey!, signature : self.signedBytes!, bytes : self.badtest)
+//        }
     }
-
+    
     
     func generateAlert (_ alertMessage: String){
         let alert = UIAlertController(title: "Pay Merchant", message: alertMessage, preferredStyle: .alert)
-        let payAction = UIAlertAction(title: "Restart", style: .default, handler: { (UIAlertAction) in self.payTheBill()})
+        let payAction = UIAlertAction(title: "Pay", style: .default, handler: { (UIAlertAction) in self.payTheBill()})
         let cancelPayment = UIAlertAction(title: "Cancel", style: UIAlertAction.Style.cancel, handler: nil)
         
         alert.addAction(payAction)
@@ -559,51 +616,31 @@ Amount: $6.95
         
         present(alert, animated: true, completion: nil)
     }
+    
+    
+    func savePublicKeyValue() {
+        print("Saved Public Key Value")
+        print("savedPublicValue: \(savedPublicValue)")
+        defaults.set(savedPublicValue, forKey: Keys.savedPublicKey)
+    }
+    
+    func saveSecretKeyValue(){
+        print("Saved Secret Key Value")
+        print("savedSecretValue: \(savedSecret)")
+        defaults.set(savedSecret, forKey: Keys.savedPrivateKey)
+    }
+    
+    
+    func checkForKeys() {
+        let possibleSavedKey = defaults.array(forKey: Keys.savedPublicKey)
+        let possibleSavedSecret = defaults.array(forKey: Keys.savedPrivateKey)
         
-    
-    // define the template document for a certificate
-    let template = """
-[
-    $component: [
-        $protocol: v1
-        $timestamp: <{timestamp}>
-        $accountTag: #{accountTag}
-        $publicKey: '{publicKey}'
-    ](
-        $type: /bali/notary/Certificate/v1
-        $tag: #{documentTag}
-        $version: v1
-        $permissions: /bali/permissions/public/v1
-        $previous: none
-    )
-    $protocol: v1
-    $timestamp: <{timestamp}>
-    $certificate: none
-    $signature: '
-{signature}
-    '
-](
-    $type: /bali/notary/Document/v1
-)
-"""
-    
-//    func generateCertificate(accountTag: String, publicKey: String, signature: String) -> String {
-//        // format the current timestamp
-//        let now = NSDate()
-//        let formatter = NSDateFormatter()
-//        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS"
-//        formatter.timeZone = NSTimeZone(forSecondsFromGMT: 0)
-//        let timestamp = formatter.stringFromDate(now)
-//
-//        // generate a new document tag
-//        let documentTag = randomTag()
-//
-//        // fill in certificate document
-//        var certificate = template.replacingOccurrences(of: "{timestamp}", with: timestamp)
-//        certificate = certificate.replacingOccurrences(of: "{documentTag}", with: documentTag)
-//        certificate = certificate.replacingOccurrences(of: "{accountTag}", with: accountTag)
-//        certificate = certificate.replacingOccurrences(of: "{publicKey}", with: publicKey)
-//        return certificate
-//    }
+        if possibleSavedKey != nil{
+            publicKey = possibleSavedKey as! [UInt8]
+            secret = possibleSavedSecret as! [UInt8]
+        }
+        print("Check for Public Key: \(publicKey)")
+        print("Check for Secret Device Key: \(secret)")
+    }
 }
 

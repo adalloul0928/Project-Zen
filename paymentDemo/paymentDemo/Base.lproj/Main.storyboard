@@ -30,6 +30,14 @@
                                     <action selector="buttonPressed:" destination="BYZ-38-t0r" eventType="touchUpInside" id="xbn-kw-kf7"/>
                                 </connections>
                             </button>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="93m-do-Vlb">
+                                <rect key="frame" x="130" y="167" width="115" height="75"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <state key="normal" title="Test"/>
+                                <connections>
+                                    <action selector="TEST:" destination="BYZ-38-t0r" eventType="touchUpInside" id="EDt-9r-Q9D"/>
+                                </connections>
+                            </button>
                         </subviews>
                         <color key="backgroundColor" red="0.54976446750113728" green="0.81079463207217106" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
