@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		169F5DF223108C4200AAD47E /* ProgressHUD.bundle in Resources */ = {isa = PBXBuildFile; fileRef = 169F5DEF23108C4100AAD47E /* ProgressHUD.bundle */; };
 		169F5DF323108C4200AAD47E /* ProgressHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = 169F5DF123108C4200AAD47E /* ProgressHUD.m */; };
+		169F5DF5231820CB00AAD47E /* Document.swift in Sources */ = {isa = PBXBuildFile; fileRef = 169F5DF4231820CB00AAD47E /* Document.swift */; };
 		16AD5A0D23107125001797FD /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16AD5A0C23107125001797FD /* AppDelegate.swift */; };
 		16AD5A0F23107125001797FD /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16AD5A0E23107125001797FD /* ViewController.swift */; };
 		16AD5A1223107125001797FD /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 16AD5A1023107125001797FD /* Main.storyboard */; };
@@ -21,6 +22,7 @@
 		169F5DEF23108C4100AAD47E /* ProgressHUD.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = ProgressHUD.bundle; sourceTree = "<group>"; };
 		169F5DF023108C4200AAD47E /* ProgressHUD.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ProgressHUD.h; sourceTree = "<group>"; };
 		169F5DF123108C4200AAD47E /* ProgressHUD.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ProgressHUD.m; sourceTree = "<group>"; };
+		169F5DF4231820CB00AAD47E /* Document.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Document.swift; sourceTree = "<group>"; };
 		16AD5A0923107125001797FD /* paymentDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = paymentDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		16AD5A0C23107125001797FD /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		16AD5A0E23107125001797FD /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
@@ -78,6 +80,7 @@
 				16AD5A1323107126001797FD /* Assets.xcassets */,
 				16AD5A1523107126001797FD /* LaunchScreen.storyboard */,
 				16AD5A1823107126001797FD /* Info.plist */,
+				169F5DF4231820CB00AAD47E /* Document.swift */,
 			);
 			path = paymentDemo;
 			sourceTree = "<group>";
@@ -155,6 +158,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				169F5DF5231820CB00AAD47E /* Document.swift in Sources */,
 				169F5DF323108C4200AAD47E /* ProgressHUD.m in Sources */,
 				16AD5A0F23107125001797FD /* ViewController.swift in Sources */,
 				16AD5A0D23107125001797FD /* AppDelegate.swift in Sources */,

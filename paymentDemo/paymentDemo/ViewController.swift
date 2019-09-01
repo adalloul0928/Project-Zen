@@ -20,9 +20,7 @@ let PROTOCOL : String  = "v1"
 let DIGEST : String = "sha512"
 let SIGNATURE : String = "ed25519"
 let BLOCK_SIZE : Int = 510
-let KEY_SIZE : Int = 32
 let DIG_SIZE : Int = 64
-let SIG_SIZE : Int = 64
 
 // ViewController class adopts both the central and peripheral delegates and conforms to their protocol's requirements
 class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDelegate {
@@ -50,7 +48,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     var publicKey : [UInt8]?
     var secret = [UInt8](repeating: 0, count: KEY_SIZE)  // look for unsigned 8-bit int
     var previousSecret : [UInt8]?
-    var signedBytes : [UInt8]?
+    var signedBytes : [UInt8]? // equivalent to signature
     let BLEService_UUID = CBUUID(string: UART_SERVICE_ID)
     let BLE_Characteristic_uuid_Rx = CBUUID(string: UART_WRITE_ID)
     let BLE_Characteristic_uuid_Tx = CBUUID(string: UART_NOTIFICATION_ID)
@@ -65,6 +63,10 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     let defaults = UserDefaults.standard
     var savedPublicValue : [UInt8]?
     var savedSecret : [UInt8]?
+    
+    // Generate document and certificate
+    let accountTag = randomBytes(size: TAG_SIZE)
+//    let certificate = generateCertificate(accountTag: accountTag, publicKey: publicKey)
     
     struct Keys {
         static let savedPublicKey = "savedPublicKey"
@@ -84,7 +86,10 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     @IBOutlet weak var PayMerchant: UIButton!
     
     @IBAction func TEST(_ sender: UIButton) {
-        eraseKeys()
+        connectToDevice()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            self.eraseKeys()
+        }
         savedPublicValue = nil
         savedSecret = nil
         saveSecretKeyValue()
@@ -545,9 +550,6 @@ Amount: $6.95
                     signedBytes = response
                     print("Signed Bytes: \(signedBytes)")
                     ProgressHUD.showSuccess("Payment Success")
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                        self.disconnectFromDevice()
-                    }
                 }
                 else{
                     ProgressHUD.showError("Payment Failed")
