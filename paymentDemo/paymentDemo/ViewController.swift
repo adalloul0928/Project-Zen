@@ -68,6 +68,17 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     let accountTag = randomBytes(size: TAG_SIZE)
 //    let certificate = generateCertificate(accountTag: accountTag, publicKey: publicKey)
     
+    // State of the application to direct what function to do next
+    var appState = 0
+    
+    var alertMessage : String = """
+AccountId: A4TXD731BBY
+Merchant: Starbucks
+Date: 2019-08-18
+Time: 11:30:00 AM
+Amount: $6.95
+"""
+    
     struct Keys {
         static let savedPublicKey = "savedPublicKey"
         static let savedPrivateKey = "savedPrivateKey"
@@ -79,41 +90,161 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         // Do any additional setup after loading the view.
         centralManager = CBCentralManager(delegate: self, queue: nil)
         checkForKeys()
-//        PayMerchant.isHidden = true
     }
     
 
     @IBOutlet weak var PayMerchant: UIButton!
     
     @IBAction func TEST(_ sender: UIButton) {
+        appState = 10
         connectToDevice()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            self.eraseKeys()
-        }
-        savedPublicValue = nil
-        savedSecret = nil
-        saveSecretKeyValue()
-        savePublicKeyValue()
     }
     
     @IBAction func buttonPressed(_ sender: UIButton) {
-        connectToDevice()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { // Change `10.0` to the desired number of seconds.
+        appState = 2
+        checkState(appState)
+    }
+    
+    func checkState(_ currentState: Int){
+        switch(currentState) {
+        case 0:
+            // update
+            print("Searching for Peripheral")
+        case 1:
+            // update
+            print("Found Peripheral")
+        case 2:
+            // update
+            print("Active State - Connect to Device")
+            connectToDevice()
+        case 3:
+            // State to check if have keys or need to generate new ones
+            print("Connected - Check for Keys")
             if self.publicKey == nil{
                 print("public key is nil")
                 print(self.publicKey)
-                self.generateKeys()
+                appState = 4
             }
-        }
-        var alertMessage : String = """
-AccountId: A4TXD731BBY
-Merchant: Starbucks
-Date: 2019-08-18
-Time: 11:30:00 AM
-Amount: $6.95
-"""
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { // Change `10.0` to the desired number of seconds.
+            else{
+                print("Current Key: \(self.publicKey)")
+                appState = 5
+            }
+            checkState(appState)
+        case 4:
+            // State to generate new keys
+            print("Generating Keys")
+            self.generateKeys()
+        case 5:
+            // Keys are generated, activate payment alert to user
+            print("Keys Generated - Waiting for User to press Pay")
             self.generateAlert(alertMessage)
+        case 6:
+            // State where we can now call the signBytes function
+            print("Signing Bytes")
+            self.signBytes(test)
+        case 7:
+            // Failed, for any number of numerous reasons. Need to update so not a catch all
+            print("Failure")
+            appState = 8
+            checkState(appState)
+        case 8:
+            // Finished work, now need to disconnect
+            print("Disconnecting...")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { // Change `10.0` to the desired number of seconds.
+                self.disconnectFromDevice()
+            }
+        case 9:
+            // update
+            print("Processing Blocks")
+        case 10:
+            print("Erasing Keys")
+            savedPublicValue = nil
+            savedSecret = nil
+            publicKey = nil
+            saveSecretKeyValue()
+            savePublicKeyValue()
+            self.eraseKeys()
+        default:
+            print("Error: default in checkState")
+        }
+    }
+    
+    
+    func checkResponse(response : [UInt8]){
+        if response[0] == 255{
+            print("Case \(REQUEST_TYPE): Failed 255")
+        }
+        else{
+            switch(REQUEST_TYPE) {
+            case 0:
+                print("CASE Processing Blocks - NEED TO IMPLEMENT")
+                appState = 9
+            case 1:
+                print("Generate Keys: ")
+                if response.count == 32{
+                    publicKey = response
+                    savedPublicValue = publicKey
+                    savedSecret = secret
+                    savePublicKeyValue()
+                    saveSecretKeyValue()
+                    print("Public Key: \(publicKey)")
+                    print("Secret: \(secret)")
+                    appState = 5
+                }
+                else{
+                    print("Generate Keys Failed")
+                    appState = 7
+                }
+            case 2:
+                // Add in saving default values
+                print("Rotate Keys: ")
+                if response.count == 32{
+                    publicKey = response
+                    print("New Public Key: \(publicKey)")
+                }
+                appState = 8
+            case 3:
+                print("Erase Keys: ")
+                if response[0] == 1{
+                    print("SUCCESS")
+                }
+                else if response[1] == 0{
+                    print("Did Not Erase Keys")
+                }
+                appState = 8
+            case 4:
+                print("CASE Digest Bytes - NEED TO IMPLEMENT")
+                appState = 8
+            case 5:
+                print("Sign Bytes: ")
+                if response.count == 64{
+                    signedBytes = response
+                    print("Signed Bytes: \(signedBytes)")
+                    ProgressHUD.showSuccess("Payment Success")
+                    appState = 8
+                }
+                else{
+                    ProgressHUD.showError("Payment Failed")
+                    appState = 8
+                }
+            case 6:
+                print("Signature Valid: ")
+                if response[0] == 1{
+                    validSignatureBool = true // may not need??
+                    print("IsValid Signature")
+                    appState = 8
+                }
+                else if response[1] == 0{
+                    print("Signature NOT Valid")
+                    appState = 8
+                }
+                
+            default:
+                print("Error: default in switch case")
+                print("Response: \(response)")
+                appState = 7
+            }
+            checkState(appState)
         }
     }
     
@@ -385,6 +516,7 @@ Amount: $6.95
             print ("Advertisement Data : \(advertisementData)")
             blePeripheral = peripheral
         }
+        appState = 1
     }
     
     
@@ -402,7 +534,6 @@ Amount: $6.95
      */
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         ProgressHUD.showSuccess("Connected")
-//        PayMerchant.isHidden = false
         connected = true
         print("*****************************")
         print("Connection complete")
@@ -473,7 +604,8 @@ Amount: $6.95
                 peripheral.setNotifyValue(true, for: notifyCharacteristic!)
                 // We can return after calling CBPeripheral.setNotifyValue because CBPeripheralDelegate's
                 // didUpdateNotificationStateForCharacteristic method will be called automatically
-                peripheral.readValue(for: characteristic)
+                
+                // peripheral.readValue(for: characteristic)
             }
         }
     }
@@ -492,6 +624,10 @@ Amount: $6.95
         if (characteristic.isNotifying) {
             print ("Subscribed. Notification has begun for: \(characteristic.uuid)")
         }
+        if appState != 10{
+            appState = 3
+        }
+        checkState(appState)
     }
 
 
@@ -506,78 +642,13 @@ Amount: $6.95
             }
         }
     }
-
-
-    func checkResponse(response : [UInt8]){
-        if response[0] == 255{
-            print("Case \(REQUEST_TYPE): Failed 255")
-        }
-        else{
-            switch(REQUEST_TYPE) {
-            case 0:
-                print("CASE Processing Blocks - NEED TO IMPLEMENT")
-            case 1:
-                print("Generate Keys: ")
-                if response.count == 32{
-                    publicKey = response
-                    savedPublicValue = publicKey
-                    savedSecret = secret
-                    savePublicKeyValue()
-                    saveSecretKeyValue()
-                    print("Public Key: \(publicKey)")
-                    print("Secret: \(secret)")
-                }
-            case 2:
-                // Add in saving default values
-                print("Rotate Keys: ")
-                if response.count == 32{
-                    publicKey = response
-                    print("New Public Key: \(publicKey)")
-                }
-            case 3:
-                print("Erase Keys: ")
-                if response[0] == 1{
-                    print("SUCCESS")
-                }
-                else if response[1] == 0{
-                    print("Did Not Erase Keys")
-                }
-            case 4:
-                print("CASE Digest Bytes - NEED TO IMPLEMENT")
-            case 5:
-                print("Sign Bytes: ")
-                if response.count == 64{
-                    signedBytes = response
-                    print("Signed Bytes: \(signedBytes)")
-                    ProgressHUD.showSuccess("Payment Success")
-                }
-                else{
-                    ProgressHUD.showError("Payment Failed")
-                }
-            case 6:
-                print("Signature Valid: ")
-                if response[0] == 1{
-                    validSignatureBool = true // may not need??
-                    print("ISVALID PAYMENT")
-//                    ProgressHUD.showSuccess("Payment Success")
-                    
-                }
-                else if response[1] == 0{
-                    print("Signature NOT Valid")
-//                    ProgressHUD.showError("Payment Failed")
-                }
-                
-            default:
-                print("Error: default in switch case")
-                print("Response: \(response)")
-            }
-        }
-    }
     
     
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
-        ProgressHUD.showError("Disconnected")
-        print("Disconnected")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { // Change `10.0` to the desired number of seconds.
+            ProgressHUD.showError("Disconnected")
+        }
+        print("Successfully Disconnected")
     }
     
     
@@ -594,17 +665,15 @@ Amount: $6.95
         if blePeripheral != nil {
             centralManager?.cancelPeripheralConnection(blePeripheral!)
         }
+        appState = 2
     }
     
     
     func payTheBill(){
 //        let buf: [UInt8] = Array("test".utf8)
         print("Paid the Bill")
-        signBytes(test)
-//        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { // Change `1.0` to the desired number of seconds.
-//            // Code you want to be delayed
-//            self.validSignature(aPublicKey : self.publicKey!, signature : self.signedBytes!, bytes : self.badtest)
-//        }
+        appState = 6
+        checkState(appState)
     }
     
     

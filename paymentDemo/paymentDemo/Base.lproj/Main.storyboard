@@ -31,9 +31,9 @@
                                 </connections>
                             </button>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="93m-do-Vlb">
-                                <rect key="frame" x="130" y="167" width="115" height="75"/>
+                                <rect key="frame" x="130" y="465" width="115" height="75"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                <state key="normal" title="Test"/>
+                                <state key="normal" title="Erase Keys"/>
                                 <connections>
                                     <action selector="TEST:" destination="BYZ-38-t0r" eventType="touchUpInside" id="EDt-9r-Q9D"/>
                                 </connections>
