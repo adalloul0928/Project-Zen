@@ -225,8 +225,11 @@ func generateDocument(certificate: String, signature: String) -> String {
 
 // TEST IT OUT
 
-//let accountTag = randomBytes(size: TAG_SIZE)
-//let publicKey = randomBytes(size: KEY_SIZE)
-//let certificate = generateCertificate(accountTag: accountTag, publicKey: publicKey)
-//let signature = formatLines(string: randomBytes(size: SIG_SIZE))
+//let accountTagString = randomBytes(size: TAG_SIZE)
+//let publicKeyString = randomBytes(size: KEY_SIZE)
+//let publicKeyString = base32Encode(bytes : publicKey)
+//let certificate = generateCertificate(accountTag: accountTagString, publicKey: publicKeyString)
+
+// SIGNATURE EQUIVALENT TO SIGNED BYTES
+//let signature = formatLines(string: base32Encode(bytes : signedBytes))
 //let document = generateDocument(certificate: certificate, signature: signature)

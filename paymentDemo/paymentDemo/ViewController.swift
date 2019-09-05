@@ -22,6 +22,8 @@ let SIGNATURE : String = "ed25519"
 let BLOCK_SIZE : Int = 510
 let DIG_SIZE : Int = 64
 
+let accountTagString = randomBytes(size: TAG_SIZE)
+
 // ViewController class adopts both the central and peripheral delegates and conforms to their protocol's requirements
 class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDelegate {
 
@@ -70,14 +72,10 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     
     // State of the application to direct what function to do next
     var appState = 0
-    
-    var alertMessage : String = """
-AccountId: A4TXD731BBY
-Merchant: Starbucks
-Date: 2019-08-18
-Time: 11:30:00 AM
-Amount: $6.95
-"""
+    var numBlocks : Int = 0
+    var signBytesRequest : [UInt8]?
+ 
+    var alertMessage : String?
     
     struct Keys {
         static let savedPublicKey = "savedPublicKey"
@@ -103,6 +101,25 @@ Amount: $6.95
     @IBAction func buttonPressed(_ sender: UIButton) {
         appState = 2
         checkState(appState)
+    }
+    
+    func generateAlertString(){
+        // finish implementation
+        var merchant : String = "Starbucks"
+        var amount : Float = 7.60
+        var date = Date()
+        let formatter = DateFormatter()
+        
+        formatter.dateFormat = "dd.MM.yyyy"
+        var dateFormatted : String = formatter.string(from: date)
+        
+        alertMessage = """
+        AccountId: A4TXD731BBY
+        Merchant: Starbucks
+        Date: 2019-08-18
+        Time: 11:30:00 AM
+        Amount: $6.95
+        """
     }
     
     func checkState(_ currentState: Int){
@@ -137,11 +154,16 @@ Amount: $6.95
         case 5:
             // Keys are generated, activate payment alert to user
             print("Keys Generated - Waiting for User to press Pay")
-            self.generateAlert(alertMessage)
+            self.generateAlertString()
+            self.generateAlert(alertMessage!)
         case 6:
             // State where we can now call the signBytes function
             print("Signing Bytes")
-            self.signBytes(test)
+            let publicKeyString = base32Encode(bytes : publicKey!)
+            var certificate = generateCertificate(accountTag: accountTagString, publicKey: publicKeyString)
+            let certificateBytes: [UInt8] = Array(certificate.utf8)
+            print("Certificate: \(certificateBytes)")
+            self.signBytes(certificateBytes)
         case 7:
             // Failed, for any number of numerous reasons. Need to update so not a catch all
             print("Failure")
@@ -154,8 +176,9 @@ Amount: $6.95
                 self.disconnectFromDevice()
             }
         case 9:
-            // update
-            print("Processing Blocks")
+            // testing
+            print("Processing Blocks - Checker")
+            processRequest(signBytesRequest!)
         case 10:
             print("Erasing Keys")
             savedPublicValue = nil
@@ -306,15 +329,16 @@ Amount: $6.95
      * @returns A byte array containing the resulting digital signature.
      */
     func signBytes(_ bytes : [UInt8]) {
-        var request : [UInt8]
+//        var request : [UInt8]
         if (previousSecret != nil) {
             // we are in the process of rotating keys so use the previous secret
-            request = formatRequest("signBytes", previousSecret, bytes)
+//            request = formatRequest("signBytes", previousSecret, bytes)
+            signBytesRequest = formatRequest("signBytes", previousSecret, bytes)
             previousSecret = nil
         } else {
-            request = formatRequest("signBytes", secret, bytes)
+            signBytesRequest = formatRequest("signBytes", secret, bytes)
         }
-        processRequest(request)
+        processRequest(signBytesRequest!)
     }
     
     
@@ -379,7 +403,7 @@ Amount: $6.95
         var length : Int
         for arg in args{
             length = arg!.count
-            request += [UInt8(length) >> 8, UInt8(length)]  // the length of this argument
+            request += [UInt8(length >> 8), UInt8(length & 0xFF)] // the length of this argument
             request += arg! // the argument bytes
         }
         print("Request: \(request)")
@@ -400,39 +424,40 @@ Amount: $6.95
         var buffer : [UInt8]
         var offset : Int
         var blockSize : Int
-        var temp : Double = Double(request.count - 2) / Double(BLOCK_SIZE) - 1
-        var extraBlocks : Int = Int(temp.rounded(.up))
-        var block : Int = extraBlocks
+        var temp : Double = Double(request.count - 2) / Double(BLOCK_SIZE)
+        // refactor later to make numBlocks equivalent to numExtraBlocks and change according code
+        numBlocks = Int(temp.rounded(.up))
         
-        while block > 0{
+        if numBlocks > 1{
+            print("NumBlocks: \(numBlocks)")
             // the offset includes the header bytes
-            offset = block * BLOCK_SIZE + 2
+            offset = (numBlocks - 1) * BLOCK_SIZE + 2
             
             // calculate the current block size
             blockSize = min(request.count - offset, BLOCK_SIZE)
             
             // concatenate a header and the current block bytes
-            buffer = [0x00, UInt8(block)] + Array(request[offset ..< (offset + blockSize)])
-            
-            // process the block and ignore the response
-            processBlock(buffer)
-            
-            // move on to previous block
-            block -= 1
+            buffer = [0x00, UInt8(numBlocks - 1)] + Array(request[offset ..< (offset + blockSize)])
         }
-        blockSize = min(request.count, BLOCK_SIZE + 2);
-        buffer = Array(request[0..<blockSize])  // includes the actual header
+        else{
+            print("NumBlocks: \(numBlocks)")
+            blockSize = min(request.count, BLOCK_SIZE + 2);
+            buffer = Array(request[0..<blockSize])  // includes the actual header
+        }
+        numBlocks -= 1
         processBlock(buffer)
     }
     
     
     /**
-     * This function...
+     * REMOVE - only need the writeCharacteristic block
      *
      * @param request A byte array containing the request to be processed.
      */
-    func processBlock(_ block : [UInt8]){
-        writeCharacteristic(val: block)
+    func processBlock(_ val : [UInt8]){
+        let ns = NSData(bytes: val, length: val.count)
+        print("Wrote Characteristic - Processed Block")
+        blePeripheral!.writeValue(ns as Data, for: writeCharacteristic!, type: CBCharacteristicWriteType.withResponse)
     }
     
     
@@ -441,11 +466,11 @@ Amount: $6.95
      *
      * @param request A byte array containing the request to be processed.
      */
-    func writeCharacteristic(val: [UInt8]){
-        let ns = NSData(bytes: val, length: val.count)
-        print("Wrote Characteristic")
-        blePeripheral!.writeValue(ns as Data, for: writeCharacteristic!, type: CBCharacteristicWriteType.withResponse)
-    }
+//    func writeCharacteristic(val: [UInt8]){
+//        let ns = NSData(bytes: val, length: val.count)
+//        print("Wrote Characteristic")
+//        blePeripheral!.writeValue(ns as Data, for: writeCharacteristic!, type: CBCharacteristicWriteType.withResponse)
+//    }
     
     
     /**
