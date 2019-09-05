@@ -105,8 +105,14 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     
     func generateAlertString(){
         // finish implementation
-        var merchant : String = "Starbucks"
-        var amount : Float = 7.60
+        var merchants : [String] = ["Starbucks", "BestBuy", "Target", "Hooters"]
+        var amounts : [Float] = [7.99, 4.99, 5.00, 1.14]
+        var randomIntMerchant = Int.random(in: 1..<4)
+        var randomFloatPrice = Int.random(in: 1..<4)
+        var merchant : String = merchants[randomIntMerchant]
+        var amount : Float = amounts[randomFloatPrice]
+        var tagIndex = accountTag.index(accountTag.startIndex, offsetBy: 8)
+        let accountIDSubstring = accountTag[..<tagIndex]
         var date = Date()
         let formatter = DateFormatter()
         
@@ -114,11 +120,11 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         var dateFormatted : String = formatter.string(from: date)
         
         alertMessage = """
-        AccountId: A4TXD731BBY
-        Merchant: Starbucks
-        Date: 2019-08-18
+        AccountId: \(accountIDSubstring)
+        Merchant: \(merchant)
+        Date: \(dateFormatted)
         Time: 11:30:00 AM
-        Amount: $6.95
+        Amount: $\(amount)
         """
     }
     
