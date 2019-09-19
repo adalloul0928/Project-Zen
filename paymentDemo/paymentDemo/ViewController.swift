@@ -16,17 +16,19 @@ let UART_SERVICE_ID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
 let UART_WRITE_ID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
 let UART_NOTIFICATION_ID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
 
-let PROTOCOL : String  = "v1"
-let DIGEST : String = "sha512"
-let SIGNATURE : String = "ed25519"
-let BLOCK_SIZE : Int = 510
-let DIG_SIZE : Int = 64
+// Unused variables
+//let PROTOCOL : String  = "v1"
+//let DIGEST : String = "sha512"
+//let SIGNATURE : String = "ed25519"
+//let DIG_SIZE : Int = 64
 
-let accountTagString = randomBytes(size: TAG_SIZE)
+// Size of blocks sent to peripheral. (512 - 2 = 510, to account for the two leading bytes which tell peripheral what to do
+let BLOCK_SIZE : Int = 510
 
 // ViewController class adopts both the central and peripheral delegates and conforms to their protocol's requirements
 class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDelegate {
 
+    
     // Creating blePeripheral object, notification characteristic, and write characteristic
     var blePeripheral : CBPeripheral?
     var notifyCharacteristic : CBCharacteristic? // UART_NOTIFICATION_ID
@@ -34,23 +36,17 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     var characteristicASCIIValue = NSString()
     var validSignatureBool : Bool = false
     
-    // Create instance variables of the CBCentralManager and CBPeripheral
+    // Create instance variables of the CBCentralManager
     var centralManager: CBCentralManager? // central manager object is the iphone device
     var bluetoothOffLabel = 0.0
     
-    // Dummy variable to test signbytes
-    var test = [UInt8](repeating: 0, count: KEY_SIZE)
-    lazy var testStatus = SecRandomCopyBytes(kSecRandomDefault, KEY_SIZE, &test)
-    
-    // Dummy variable to test failure. Will delete later when not needed! Used for signatureValid
-    var badtest = [UInt8](repeating: 0, count: KEY_SIZE)
-    lazy var testBadStatus = SecRandomCopyBytes(kSecRandomDefault, KEY_SIZE, &badtest)
-    
-    // These variables capture the state of the HSM proxy
+    // These variables are for the access of keys 
     var publicKey : [UInt8]?
     var secret = [UInt8](repeating: 0, count: KEY_SIZE)  // look for unsigned 8-bit int
     var previousSecret : [UInt8]?
     var signedBytes : [UInt8]? // equivalent to signature
+    
+    // These variables capture the state of the HSM proxy
     let BLEService_UUID = CBUUID(string: UART_SERVICE_ID)
     let BLE_Characteristic_uuid_Rx = CBUUID(string: UART_WRITE_ID)
     let BLE_Characteristic_uuid_Tx = CBUUID(string: UART_NOTIFICATION_ID)
@@ -60,22 +56,39 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     
     // Timer for connecting to peripheral - will display "not connected" after 10 seconds if cannot find peripheral
     var connected = false
+    var transaction = false
+    
+    // Enum for app state
+    enum appCurrentState {
+        case searchingPeripheral
+        case foundPeripheral
+        case activeState
+        case connectedPeripheral
+        case generatingKeys
+        case keysGenerated
+        case signingBytes
+        case failure
+        case disconnecting
+        case processingBlocks
+        case erasingKeys
+    }
     
     // To save the generated key
     let defaults = UserDefaults.standard
     var savedPublicValue : [UInt8]?
     var savedSecret : [UInt8]?
     
-    // Generate document and certificate
+    // Account tag for a user
     let accountTag = randomBytes(size: TAG_SIZE)
-//    let certificate = generateCertificate(accountTag: accountTag, publicKey: publicKey)
     
     // State of the application to direct what function to do next
-    var appState = 0
+    var appState : appCurrentState = .searchingPeripheral
     var numBlocks : Int = 0
     var signBytesRequest : [UInt8]?
  
+    // alertMessage to display to user
     var alertMessage : String?
+    var certificate : String?
     
     struct Keys {
         static let savedPublicKey = "savedPublicKey"
@@ -85,107 +98,149 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        PayMerchant.isEnabled = false
+        EraseKeys.isEnabled = false
+        PayMerchant.isHidden = true
+        EraseKeys.isHidden = true
         // Do any additional setup after loading the view.
         centralManager = CBCentralManager(delegate: self, queue: nil)
         checkForKeys()
     }
-    
 
     @IBOutlet weak var PayMerchant: UIButton!
     
-    @IBAction func TEST(_ sender: UIButton) {
-        appState = 10
+    @IBOutlet weak var EraseKeys: UIButton!
+    
+    @IBAction func eraseButton(_ sender: UIButton) {
+        PayMerchant.isEnabled = false
+        EraseKeys.isEnabled = false
+        appState = .erasingKeys
+        // May need to change this implementation
         connectToDevice()
     }
     
     @IBAction func buttonPressed(_ sender: UIButton) {
-        appState = 2
+        PayMerchant.isEnabled = false
+        EraseKeys.isEnabled = false
+        appState = .activeState
+        transaction = true
         checkState(appState)
     }
     
     func generateAlertString(){
         // finish implementation
+        let publicKeyString = base32Encode(bytes : publicKey!)
         var merchants : [String] = ["Starbucks", "BestBuy", "Target", "Hooters"]
         var amounts : [Float] = [7.99, 4.99, 5.00, 1.14]
         var randomIntMerchant = Int.random(in: 1..<4)
         var randomFloatPrice = Int.random(in: 1..<4)
         var merchant : String = merchants[randomIntMerchant]
         var amount : Float = amounts[randomFloatPrice]
+        // we only want the first 8 numbers of the account number
+        // so we need to get its index
         var tagIndex = accountTag.index(accountTag.startIndex, offsetBy: 8)
         let accountIDSubstring = accountTag[..<tagIndex]
         var date = Date()
-        let formatter = DateFormatter()
+        let formatterDate = DateFormatter()
+        let formatterTime = DateFormatter()
+    
+        formatterDate.dateFormat = "MM-dd-yyyy"
+        var dateFormatted : String = formatterDate.string(from: date)
         
-        formatter.dateFormat = "dd.MM.yyyy"
-        var dateFormatted : String = formatter.string(from: date)
+        formatterTime.dateFormat = "HH:mm"
+        var timeFormatted : String = formatterTime.string(from: date)
+
+        certificate = generateTransactionCertificate(date: dateFormatted, accountTag: String(accountIDSubstring), publicKey: publicKeyString, merchant: merchant, amount: String(amount))
+        
+        //Time: 11:30:00 AM
         
         alertMessage = """
         AccountId: \(accountIDSubstring)
         Merchant: \(merchant)
         Date: \(dateFormatted)
-        Time: 11:30:00 AM
+        Time: \(timeFormatted)
         Amount: $\(amount)
         """
     }
     
-    func checkState(_ currentState: Int){
+    func checkState(_ currentState: appCurrentState){
         switch(currentState) {
-        case 0:
-            // update
+        case .searchingPeripheral:
+            // update (not used)
             print("Searching for Peripheral")
-        case 1:
-            // update
+        case .foundPeripheral:
+            // update (not used)
             print("Found Peripheral")
-        case 2:
+//            connectToDevice()
+        case .activeState:
             // update
             print("Active State - Connect to Device")
             connectToDevice()
-        case 3:
+        case .connectedPeripheral:
             // State to check if have keys or need to generate new ones
             print("Connected - Check for Keys")
             if self.publicKey == nil{
                 print("public key is nil")
                 print(self.publicKey)
-                appState = 4
+                appState = .generatingKeys
             }
             else{
                 print("Current Key: \(self.publicKey)")
-                appState = 5
+                print("Current Secret: \(self.secret)")
+                appState = .keysGenerated
             }
             checkState(appState)
-        case 4:
+        case .generatingKeys:
             // State to generate new keys
             print("Generating Keys")
             self.generateKeys()
-        case 5:
+        case .keysGenerated:
             // Keys are generated, activate payment alert to user
-            print("Keys Generated - Waiting for User to press Pay")
-            self.generateAlertString()
-            self.generateAlert(alertMessage!)
-        case 6:
+            if transaction == true{
+                print("Keys Complete - Waiting for User to press Pay")
+                self.generateAlertString()
+                self.generateAlert(alertMessage!)
+            }
+            else{
+                print("Keys Complete")
+                appState = .signingBytes
+                checkState(appState)
+            }
+            
+        case .signingBytes:
             // State where we can now call the signBytes function
             print("Signing Bytes")
             let publicKeyString = base32Encode(bytes : publicKey!)
-            var certificate = generateCertificate(accountTag: accountTagString, publicKey: publicKeyString)
-            let certificateBytes: [UInt8] = Array(certificate.utf8)
+            if transaction == true{
+                print("Transaction Certificate")
+                print("Form Already Created")
+            }
+            else{
+                print("Regular Certificate")
+                certificate = generateCertificate(accountTag: accountTag, publicKey: publicKeyString)
+            }
+            let certificateBytes: [UInt8] = Array(certificate!.utf8)
             print("Certificate: \(certificateBytes)")
             self.signBytes(certificateBytes)
-        case 7:
+        case .failure:
             // Failed, for any number of numerous reasons. Need to update so not a catch all
             print("Failure")
-            appState = 8
+            appState = .disconnecting
             checkState(appState)
-        case 8:
+        case .disconnecting:
             // Finished work, now need to disconnect
             print("Disconnecting...")
+            transaction = false
+            PayMerchant.isHidden = false
+            EraseKeys.isHidden = false
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { // Change `10.0` to the desired number of seconds.
                 self.disconnectFromDevice()
             }
-        case 9:
+        case .processingBlocks:
             // testing
             print("Processing Blocks - Checker")
             processRequest(signBytesRequest!)
-        case 10:
+        case .erasingKeys:
             print("Erasing Keys")
             savedPublicValue = nil
             savedSecret = nil
@@ -207,7 +262,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
             switch(REQUEST_TYPE) {
             case 0:
                 print("CASE Processing Blocks - NEED TO IMPLEMENT")
-                appState = 9
+                appState = .processingBlocks
             case 1:
                 print("Generate Keys: ")
                 if response.count == 32{
@@ -218,11 +273,11 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
                     saveSecretKeyValue()
                     print("Public Key: \(publicKey)")
                     print("Secret: \(secret)")
-                    appState = 5
+                    appState = .keysGenerated
                 }
                 else{
                     print("Generate Keys Failed")
-                    appState = 7
+                    appState = .failure
                 }
             case 2:
                 // Add in saving default values
@@ -231,7 +286,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
                     publicKey = response
                     print("New Public Key: \(publicKey)")
                 }
-                appState = 8
+                appState = .disconnecting
             case 3:
                 print("Erase Keys: ")
                 if response[0] == 1{
@@ -240,38 +295,38 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
                 else if response[1] == 0{
                     print("Did Not Erase Keys")
                 }
-                appState = 8
+                appState = .disconnecting
             case 4:
                 print("CASE Digest Bytes - NEED TO IMPLEMENT")
-                appState = 8
+                appState = .disconnecting
             case 5:
                 print("Sign Bytes: ")
                 if response.count == 64{
                     signedBytes = response
                     print("Signed Bytes: \(signedBytes)")
-                    ProgressHUD.showSuccess("Payment Success")
-                    appState = 8
+                    ProgressHUD.showSuccess("Success!")
+                    appState = .disconnecting
                 }
                 else{
                     ProgressHUD.showError("Payment Failed")
-                    appState = 8
+                    appState = .disconnecting
                 }
             case 6:
                 print("Signature Valid: ")
                 if response[0] == 1{
                     validSignatureBool = true // may not need??
                     print("IsValid Signature")
-                    appState = 8
+                    appState = .disconnecting
                 }
                 else if response[1] == 0{
                     print("Signature NOT Valid")
-                    appState = 8
+                    appState = .disconnecting
                 }
                 
             default:
                 print("Error: default in switch case")
                 print("Response: \(response)")
-                appState = 7
+                appState = .failure
             }
             checkState(appState)
         }
@@ -468,18 +523,6 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     
     
     /**
-     * This function writes the block to the peripheral device.
-     *
-     * @param request A byte array containing the request to be processed.
-     */
-//    func writeCharacteristic(val: [UInt8]){
-//        let ns = NSData(bytes: val, length: val.count)
-//        print("Wrote Characteristic")
-//        blePeripheral!.writeValue(ns as Data, for: writeCharacteristic!, type: CBCharacteristicWriteType.withResponse)
-//    }
-    
-    
-    /**
      * This function is called to check that your device (iPhone) has bluetooth on
      *
      * @param request The CentralManager object representing the central (iPhone)
@@ -547,7 +590,8 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
             print ("Advertisement Data : \(advertisementData)")
             blePeripheral = peripheral
         }
-        appState = 1
+        appState = .activeState
+        checkState(appState)
     }
     
     
@@ -655,8 +699,8 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         if (characteristic.isNotifying) {
             print ("Subscribed. Notification has begun for: \(characteristic.uuid)")
         }
-        if appState != 10{
-            appState = 3
+        if appState != .erasingKeys{
+            appState = .connectedPeripheral
         }
         checkState(appState)
     }
@@ -680,6 +724,8 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
             ProgressHUD.showError("Disconnected")
         }
         print("Successfully Disconnected")
+        EraseKeys.isEnabled = true
+        PayMerchant.isEnabled = true
     }
     
     
@@ -696,14 +742,19 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         if blePeripheral != nil {
             centralManager?.cancelPeripheralConnection(blePeripheral!)
         }
-        appState = 2
+        appState = .activeState
     }
     
     
     func payTheBill(){
-//        let buf: [UInt8] = Array("test".utf8)
         print("Paid the Bill")
-        appState = 6
+        appState = .signingBytes
+        checkState(appState)
+    }
+    
+    func cancelTheBill(){
+        print("Cancelled the transaction")
+        appState = .disconnecting
         checkState(appState)
     }
     
@@ -711,7 +762,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     func generateAlert (_ alertMessage: String){
         let alert = UIAlertController(title: "Pay Merchant", message: alertMessage, preferredStyle: .alert)
         let payAction = UIAlertAction(title: "Pay", style: .default, handler: { (UIAlertAction) in self.payTheBill()})
-        let cancelPayment = UIAlertAction(title: "Cancel", style: UIAlertAction.Style.cancel, handler: nil)
+        let cancelPayment = UIAlertAction(title: "Cancel", style: UIAlertAction.Style.cancel, handler: { (UIAlertAction) in self.cancelTheBill()})
         
         alert.addAction(payAction)
         alert.addAction(cancelPayment)

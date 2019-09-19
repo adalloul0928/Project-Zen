@@ -222,6 +222,49 @@ func generateDocument(certificate: String, signature: String) -> String {
     return document
 }
 
+func generateTransactionCertificate(date: String, accountTag: String, publicKey: String, merchant: String, amount: String) -> String {
+    // format the current timestamp
+    let timestamp = currentTimestamp()
+    
+    // generate a new document tag
+    let documentTag = randomBytes(size: TAG_SIZE)
+    
+    // fill in certificate document
+    var certificate = transactionCertificateTemplate.replacingOccurrences(of: "{timestamp}", with: timestamp)
+    certificate = certificate.replacingOccurrences(of: "{dateFormatted}", with: date)
+    certificate = certificate.replacingOccurrences(of: "{accountTag}", with: accountTag)
+    certificate = certificate.replacingOccurrences(of: "{merchant}", with: merchant)
+    certificate = certificate.replacingOccurrences(of: "{amount}", with: amount)
+    certificate = certificate.replacingOccurrences(of: "{documentTag}", with: documentTag)
+    certificate = certificate.replacingOccurrences(of: "{publicKey}", with: publicKey)
+    return certificate
+}
+
+
+let transactionCertificateTemplate = """
+[
+$protocol: v1
+$date: {dateFormatted}
+$timestamp: <{timestamp}>
+$accountTag: #{accountTag}
+$publicKey: '{publicKey}'
+$merchant: {merchant}
+$amount: {amount}
+](
+$type: /bali/notary/Certificate/v1
+$tag: #{documentTag}
+$version: v1
+$permissions: /bali/permissions/public/v1
+$previous: none
+)
+"""
+
+//AccountId: \(accountIDSubstring)
+//Merchant: \(merchant)
+//Date: \(dateFormatted)
+//Time: 11:30:00 AM
+//Amount: $\(amount)
+//"""
 
 // TEST IT OUT
 

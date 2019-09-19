@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 50;
+	objectVersion = 51;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -60,6 +60,7 @@
 				16AD5A0B23107125001797FD /* paymentDemo */,
 				16AD5A0A23107125001797FD /* Products */,
 				169F5DED23108BFF00AAD47E /* Support */,
+				32A62C3799D91F65643B5968 /* Pods */,
 			);
 			sourceTree = "<group>";
 		};
@@ -83,6 +84,13 @@
 				169F5DF4231820CB00AAD47E /* Document.swift */,
 			);
 			path = paymentDemo;
+			sourceTree = "<group>";
+		};
+		32A62C3799D91F65643B5968 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Pods;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
