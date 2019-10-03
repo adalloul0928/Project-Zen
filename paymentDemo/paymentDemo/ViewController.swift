@@ -16,12 +16,6 @@ let UART_SERVICE_ID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
 let UART_WRITE_ID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
 let UART_NOTIFICATION_ID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
 
-// Unused variables
-//let PROTOCOL : String  = "v1"
-//let DIGEST : String = "sha512"
-//let SIGNATURE : String = "ed25519"
-//let DIG_SIZE : Int = 64
-
 // Size of blocks sent to peripheral. (512 - 2 = 510, to account for the two leading bytes which tell peripheral what to do
 let BLOCK_SIZE : Int = 510
 
