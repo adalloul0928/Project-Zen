@@ -3,6 +3,11 @@ platform :ios, '10.0'
 target 'paymentDemo' do
   use_frameworks!
 
-pod 'MBProgressHUD', '~> 1.1.0'
+# Pods for BluefruitApp_Aren
+	pod 'ProgressHUD'
+	pod 'AWSCore'
+	pod 'AWSCognito'
+	pod 'AWSS3'
+	pod 'MBProgressHUD', '~> 1.1.0'
 
 end

@@ -10,6 +10,9 @@
 import UIKit
 import CoreBluetooth
 import Foundation
+import AVKit
+import AVFoundation
+import AWSS3
 
 // Viewed from the client (mobile device) perspective
 let UART_SERVICE_ID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
@@ -94,6 +97,22 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     
     override func viewDidLoad() {
         super.viewDidLoad()
+//        let credentialsProvider = AWSCognitoCredentialsProvider(regionType:.USWest2, identityPoolId:"us-west-2:da2059d0-c5ab-48d1-bfb7-d90772984bfe")
+//        let configuration = AWSServiceConfiguration(region:.USWest2, credentialsProvider:credentialsProvider)
+//        AWSServiceManager.default().defaultServiceConfiguration = configuration
+        
+        let accessKey = "AKIA36UIUYOEGDKQTCAK"
+        let secretKey = "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"
+        
+        
+        let credentialsProvider = AWSStaticCredentialsProvider(accessKey: accessKey, secretKey: secretKey)
+        let configuration = AWSServiceConfiguration(region: AWSRegionType.USWest2, credentialsProvider: credentialsProvider)
+        AWSServiceManager.default().defaultServiceConfiguration = configuration
+        
+        
+//        createJSON()
+        uploadFile(with: "test", type: "json")
+        
         PayMerchant.isEnabled = false
         EraseKeys.isEnabled = false
         
@@ -102,11 +121,6 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         
         // Make the process transaction view hidden along with all the different features
         processView.isHidden = true
-        ConnectDevice.isHidden = true
-        GenerateKeys.isHidden = true
-        SignBytes.isHidden = true
-        AWS_Push.isHidden = true
-        DisconnectDevice.isHidden = true
         
         // rounded edges for button
         PayMerchant.layer.cornerRadius = PayMerchant.frame.size.height/2
@@ -121,6 +135,8 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         // Do any additional setup after loading the view.
        centralManager = CBCentralManager(delegate: self, queue: nil)
     }
+    
+    
 
     @IBOutlet weak var PayMerchant: UIButton!
 
@@ -134,15 +150,123 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     
     @IBOutlet weak var DisconnectDevice: UILabel!
     
+    @IBOutlet weak var closeButton: UIButton!
+    
+    @IBOutlet weak var connectCheckmark: UIImageView!
+    
+    @IBOutlet weak var generateKeysCheckmark: UIImageView!
+    
+    @IBOutlet weak var signBytesCheckmark: UIImageView!
+    
+    @IBOutlet weak var AWSPushCheckmark: UIImageView!
+    
+    @IBOutlet weak var disconnectCheckmark: UIImageView!
+    
     
     @IBAction func closeAnimation(_ sender: UIButton) {
         processView.isHidden = true
         self.view.backgroundColor = UIColor.white
         print("Close")
-//        stackManager()
     }
     
     @IBOutlet weak var processView: UIView!
+    
+    func createJSON(){
+        let documentsDirectoryPathString = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first!
+        let documentsDirectoryPath = NSURL(string: documentsDirectoryPathString)!
+
+        let jsonFilePath = documentsDirectoryPath.appendingPathComponent("test.json")
+        let fileManager = FileManager.default
+        var isDirectory: ObjCBool = false
+
+        // creating a .json file in the Documents folder
+        if !fileManager.fileExists(atPath: jsonFilePath!.absoluteString, isDirectory: &isDirectory) {
+            let created = fileManager.createFile(atPath: jsonFilePath!.absoluteString, contents: nil, attributes: nil)
+            if created {
+                print(jsonFilePath!.absoluteString)
+                print("File created ")
+            } else {
+                print("Couldn't create file for some reason")
+            }
+        } else {
+            print("File already exists")
+        }
+
+        // creating an array of test data
+        var numbers = ["test1","test2","test3"]
+
+        // creating JSON out of the above array
+        var jsonData: NSData!
+        do {
+            jsonData = try JSONSerialization.data(withJSONObject: numbers, options: JSONSerialization.WritingOptions()) as NSData
+            let jsonString = String(data: jsonData as Data, encoding: String.Encoding.utf8)
+            print(jsonString)
+        } catch let error as NSError {
+            print("Array to JSON conversion failed: \(error.localizedDescription)")
+        }
+
+        // Write that JSON to the file created earlier
+        do {
+            let file = try FileHandle(forWritingTo: jsonFilePath!)
+            file.write(jsonData as Data)
+            print("JSON data was written to the file successfully!")
+        } catch let error as NSError {
+            print("Couldn't write to file: \(error.localizedDescription)")
+        }
+    }
+    
+    func uploadFile(with resource: String, type: String){
+        let localImagePath = Bundle.main.path(forResource: resource, ofType: type)!
+        let url = URL(fileURLWithPath: localImagePath)
+        print(url)
+        let remoteName = "\(resource).\(type)"
+        let S3BucketName = "craterdog-bali-documents-us-west-2"
+//        let S3BucketName = "armordtest"
+        
+        let uploadRequest = AWSS3TransferManagerUploadRequest()!
+        uploadRequest.body = url
+        uploadRequest.key = remoteName
+        uploadRequest.bucket = S3BucketName
+//        uploadRequest.contentType = "image/jpeg"
+        uploadRequest.contentType = "text/plain"
+//        uploadRequest.contentType = "text/plain"
+//        uploadRequest.acl = .publicReadWrite
+        
+        let transferManager = AWSS3TransferManager.default()
+        transferManager.upload(uploadRequest).continueWith(executor: AWSExecutor.mainThread()){ (task) -> Any? in
+            if let error = task.error {
+                print(error)
+            }
+            if task.result != nil{
+                print("Uploaded Success")
+            }
+            return nil
+        }
+    
+        
+//        let key = "\(resource).\(type)"
+//        let localImagePath = Bundle.main.path(forResource: resource, ofType: type)!
+//        let localImageUrl = URL(fileURLWithPath: localImagePath)
+//
+//        let request = AWSS3TransferManagerUploadRequest()!
+////        request.bucket = "craterdog-bali-documents-us-west-2"
+//        request.bucket = "armor-d-test"
+////        request.bucket = "craterdog-bali-documents-us-west-2.s3.amazonaws.com"
+//        request.key = key
+//        request.body = localImageUrl
+//        request.acl = .publicReadWrite
+//
+//        let transferManager = AWSS3TransferManager.default()
+//        transferManager.upload(request).continueWith(executor: AWSExecutor.mainThread()){ (task) -> Any? in
+//            if let error = task.error {
+//                print(error)
+//            }
+//            if task.result != nil{
+//                print("Uploaded \(key)")
+//            }
+//            return nil
+//        }
+    }
     
     func transitionToSubView(){
         processView.isHidden = false
@@ -168,12 +292,13 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         PayMerchant.isEnabled = false
         EraseKeys.isEnabled = false
         transaction = true
+        closeButton.isEnabled = false
         
-        ConnectDevice.isHidden = true
-        GenerateKeys.isHidden = true
-        SignBytes.isHidden = true
-        AWS_Push.isHidden = true
-        DisconnectDevice.isHidden = true
+        connectCheckmark.isHidden = true
+        generateKeysCheckmark.isHidden = true
+        signBytesCheckmark.isHidden = true
+        AWSPushCheckmark.isHidden = true
+        disconnectCheckmark.isHidden = true
         
         globalStack = []
         var openFunctionCall : [functionCalls] = [.disconnectDevice, .signBytes, .generateKeys, .connectDevice, .transitionSubView, .generateAlert]
@@ -186,10 +311,6 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     
     func stackManager(){
         let curr = self.globalStack!.popLast()
-//        DispatchQueue.main.async {
-//            self.checkVisibility(curr!)
-//        }
-        checkVisibility(curr!)
         
         if let currentFunction = curr{
             nextCall(currentFunction)
@@ -202,31 +323,19 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         }
     }
     
-    func checkVisibility(_ currentFunc: functionCalls){
-        if currentFunc == .connectDevice{
-            print("Here")
-            self.ConnectDevice.isHidden = false
-        }
-        else if currentFunc == .disconnectDevice{
-            print("here2")
-            self.DisconnectDevice.isHidden = false
-        }
-//        self.processView.layoutIfNeeded()
-    }
-    
     func nextCall(_ currentFunc: functionCalls){
         switch(currentFunc) {
         case .connectDevice:
-            
-            self.connectToDevice()
+            connectCheckmark.isHidden = false
+            connectToDevice()
         case .disconnectDevice:
             transaction = false
-//            DisconnectDevice.isHidden = false
-//            processView.layoutIfNeeded()
+            DisconnectDevice.isHidden = false
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { // Change `10.0` to the desired number of seconds.
                 self.disconnectFromDevice()
             }
-//            disconnectFromDevice()
+            disconnectCheckmark.isHidden = false
+            closeButton.isEnabled = true
             PayMerchant.isHidden = false
             EraseKeys.isHidden = false
             self.view.layoutIfNeeded()
@@ -240,12 +349,12 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
             savePublicKeyValue()
             eraseKeys()
         case .generateKeys:
-//            GenerateKeys.isHidden = false
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { // Change `10.0` to the desired number of seconds.
                 if self.publicKey == nil{
                     self.generateKeys()
                 }
                 else{
+                    self.generateKeysCheckmark.isHidden = false
                     self.stackManager()
                 }
             }
@@ -255,6 +364,8 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         case .rotateKeys:
             rotateKeys()
         case .signBytes:
+            SignBytes.isHidden = false
+            AWS_Push.isHidden = false
             let publicKeyString = base32Encode(bytes : publicKey!)
             if transaction == true{
                 print("Transaction Certificate: Form Already Created")
@@ -320,6 +431,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
             case 1:
                 print("Generate Keys Response")
                 if response.count == 32{
+                    self.generateKeysCheckmark.isHidden = false
                     publicKey = response
                     savedPublicValue = publicKey
                     savedSecret = secret
@@ -354,9 +466,11 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
             case 5:
                 print("Sign Bytes Response")
                 if response.count == 64{
+                    self.signBytesCheckmark.isHidden = false
+                    self.AWSPushCheckmark.isHidden = false
                     signedBytes = response
                     print("Signed Bytes: \(signedBytes)")
-                    ProgressHUD.showSuccess("Success!")
+//                    ProgressHUD.showSuccess("Success!")
                     self.stackManager()
                 }
                 else{
@@ -663,7 +777,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
      * After connecting, this function is automatically called
      */
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
-        ProgressHUD.showSuccess("Connected")
+        ProgressHUD.showSuccess("Welcome!")
 //        if transaction == true{
 //            transitionToSubView()
 //        }
@@ -796,7 +910,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     func disconnectFromDevice() {
         print("Disconnecting...")
         if blePeripheral != nil {
-            centralManager?.cancelPeripheralConnection(blePeripheral!)
+        centralManager?.cancelPeripheralConnection(blePeripheral!)
         }
     }
     
