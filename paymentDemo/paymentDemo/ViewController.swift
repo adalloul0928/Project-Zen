@@ -110,8 +110,10 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         AWSServiceManager.default().defaultServiceConfiguration = configuration
         
         
-//        createJSON()
-        uploadFile(with: "test", type: "json")
+        createTempFile()
+        // certificate.bali
+        // transaction.bali
+        uploadFile(with: "temp", type: "bali")
         
         PayMerchant.isEnabled = false
         EraseKeys.isEnabled = false
@@ -171,11 +173,11 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     
     @IBOutlet weak var processView: UIView!
     
-    func createJSON(){
+    func createTempFile(){
         let documentsDirectoryPathString = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first!
         let documentsDirectoryPath = NSURL(string: documentsDirectoryPathString)!
 
-        let jsonFilePath = documentsDirectoryPath.appendingPathComponent("test.json")
+        let jsonFilePath = documentsDirectoryPath.appendingPathComponent("temp.bali")
         let fileManager = FileManager.default
         var isDirectory: ObjCBool = false
 
@@ -207,8 +209,12 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
 
         // Write that JSON to the file created earlier
         do {
-            let file = try FileHandle(forWritingTo: jsonFilePath!)
-            file.write(jsonData as Data)
+//            let file = try FileHandle(forWritingTo: jsonFilePath!)
+            let tempString = "Hello World"
+//            file.write(jsonData as Data)
+            let urlPath = URL(fileURLWithPath: documentsDirectoryPathString)
+            let url = urlPath.appendingPathComponent("temp.bali")
+            try tempString.write(to: url, atomically: true, encoding: String.Encoding.utf8)
             print("JSON data was written to the file successfully!")
         } catch let error as NSError {
             print("Couldn't write to file: \(error.localizedDescription)")
@@ -216,8 +222,13 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     }
     
     func uploadFile(with resource: String, type: String){
-        let localImagePath = Bundle.main.path(forResource: resource, ofType: type)!
-        let url = URL(fileURLWithPath: localImagePath)
+        let documentsDirectoryPathString = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first!
+        let documentsDirectoryPath = NSURL(string: documentsDirectoryPathString)!
+        
+//        let localImagePath = Bundle.main.path(forResource: resource, ofType: type)!
+//        let url = URL(fileURLWithPath: localImagePath)
+        let urlPath = URL(fileURLWithPath: documentsDirectoryPathString)
+        let url = urlPath.appendingPathComponent("temp.bali")
         print(url)
         let remoteName = "\(resource).\(type)"
         let S3BucketName = "craterdog-bali-documents-us-west-2"
@@ -229,8 +240,8 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         uploadRequest.bucket = S3BucketName
 //        uploadRequest.contentType = "image/jpeg"
         uploadRequest.contentType = "text/plain"
-//        uploadRequest.contentType = "text/plain"
 //        uploadRequest.acl = .publicReadWrite
+        // DONT SET AN ACL
         
         let transferManager = AWSS3TransferManager.default()
         transferManager.upload(uploadRequest).continueWith(executor: AWSExecutor.mainThread()){ (task) -> Any? in

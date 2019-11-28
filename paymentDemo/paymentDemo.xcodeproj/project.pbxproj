@@ -17,7 +17,7 @@
 		16AD5A1723107126001797FD /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 16AD5A1523107126001797FD /* LaunchScreen.storyboard */; };
 		3569A2E76DBD1B6434648F99 /* Pods_paymentDemo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B827FCE3D7EA5F7916496110 /* Pods_paymentDemo.framework */; };
 		BE187B282377542B003ABEFB /* test.jpg in Resources */ = {isa = PBXBuildFile; fileRef = BE187B272377542B003ABEFB /* test.jpg */; };
-		BEB58576238D1329000EFB65 /* test.json in Resources */ = {isa = PBXBuildFile; fileRef = BEB58575238D1329000EFB65 /* test.json */; };
+		BEB58576238D1329000EFB65 /* test333.json in Resources */ = {isa = PBXBuildFile; fileRef = BEB58575238D1329000EFB65 /* test333.json */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -37,7 +37,7 @@
 		B3E127F4537F7A1955186818 /* Pods-paymentDemo.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-paymentDemo.release.xcconfig"; path = "Target Support Files/Pods-paymentDemo/Pods-paymentDemo.release.xcconfig"; sourceTree = "<group>"; };
 		B827FCE3D7EA5F7916496110 /* Pods_paymentDemo.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_paymentDemo.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		BE187B272377542B003ABEFB /* test.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; name = test.jpg; path = ../../../../../../Downloads/test.jpg; sourceTree = "<group>"; };
-		BEB58575238D1329000EFB65 /* test.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; name = test.json; path = ../../../../../../Desktop/test.json; sourceTree = "<group>"; };
+		BEB58575238D1329000EFB65 /* test333.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; name = test333.json; path = ../../../../../../Desktop/test333.json; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -85,7 +85,7 @@
 		16AD5A0B23107125001797FD /* paymentDemo */ = {
 			isa = PBXGroup;
 			children = (
-				BEB58575238D1329000EFB65 /* test.json */,
+				BEB58575238D1329000EFB65 /* test333.json */,
 				BE187B272377542B003ABEFB /* test.jpg */,
 				16AD5A0C23107125001797FD /* AppDelegate.swift */,
 				16AD5A0E23107125001797FD /* ViewController.swift */,
@@ -181,7 +181,7 @@
 				16AD5A1423107126001797FD /* Assets.xcassets in Resources */,
 				BE187B282377542B003ABEFB /* test.jpg in Resources */,
 				16AD5A1223107125001797FD /* Main.storyboard in Resources */,
-				BEB58576238D1329000EFB65 /* test.json in Resources */,
+				BEB58576238D1329000EFB65 /* test333.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
