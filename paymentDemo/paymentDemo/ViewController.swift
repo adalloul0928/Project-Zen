@@ -71,7 +71,6 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     var alertMessage : String?
     var certificate : String?
     
-    
     enum stateApp{
         case noKeys
         case oneKey
@@ -88,6 +87,8 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         case eraseKeys
         case signBytes
         case validSignature
+        case createTempFile
+        case uploadFile
     }
     
     struct Keys {
@@ -95,25 +96,20 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         static let savedPrivateKey = "savedPrivateKey"
     }
     
+
+    
     override func viewDidLoad() {
         super.viewDidLoad()
 //        let credentialsProvider = AWSCognitoCredentialsProvider(regionType:.USWest2, identityPoolId:"us-west-2:da2059d0-c5ab-48d1-bfb7-d90772984bfe")
 //        let configuration = AWSServiceConfiguration(region:.USWest2, credentialsProvider:credentialsProvider)
 //        AWSServiceManager.default().defaultServiceConfiguration = configuration
         
-        let accessKey = "AKIA36UIUYOEGDKQTCAK"
-        let secretKey = "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"
-        
+//        let accessKey = ""
+//        let secretKey = ""
         
         let credentialsProvider = AWSStaticCredentialsProvider(accessKey: accessKey, secretKey: secretKey)
         let configuration = AWSServiceConfiguration(region: AWSRegionType.USWest2, credentialsProvider: credentialsProvider)
         AWSServiceManager.default().defaultServiceConfiguration = configuration
-        
-        
-        createTempFile()
-        // certificate.bali
-        // transaction.bali
-        uploadFile(with: "temp", type: "bali")
         
         PayMerchant.isEnabled = false
         EraseKeys.isEnabled = false
@@ -130,7 +126,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         
         // load the function stack when first loading the program
         globalStack = []
-        var openFunctionCall : [functionCalls] = [.disconnectDevice, .signBytes, .generateKeys, .eraseKeys, .connectDevice]
+        var openFunctionCall : [functionCalls] = [.disconnectDevice, .uploadFile, .createTempFile, .signBytes, .generateKeys, .eraseKeys, .connectDevice]
         for function in openFunctionCall{
             globalStack!.append(function)
         }
@@ -177,15 +173,15 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         let documentsDirectoryPathString = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first!
         let documentsDirectoryPath = NSURL(string: documentsDirectoryPathString)!
 
-        let jsonFilePath = documentsDirectoryPath.appendingPathComponent("temp.bali")
+        let filePath = documentsDirectoryPath.appendingPathComponent("temp.bali")
         let fileManager = FileManager.default
         var isDirectory: ObjCBool = false
 
-        // creating a .json file in the Documents folder
-        if !fileManager.fileExists(atPath: jsonFilePath!.absoluteString, isDirectory: &isDirectory) {
-            let created = fileManager.createFile(atPath: jsonFilePath!.absoluteString, contents: nil, attributes: nil)
+        // creating a file in the Documents folder
+        if !fileManager.fileExists(atPath: filePath!.absoluteString, isDirectory: &isDirectory) {
+            let created = fileManager.createFile(atPath: filePath!.absoluteString, contents: nil, attributes: nil)
             if created {
-                print(jsonFilePath!.absoluteString)
+                print(filePath!.absoluteString)
                 print("File created ")
             } else {
                 print("Couldn't create file for some reason")
@@ -195,30 +191,31 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         }
 
         // creating an array of test data
-        var numbers = ["test1","test2","test3"]
+//        var numbers = ["test1","test2","test3"]
 
         // creating JSON out of the above array
-        var jsonData: NSData!
-        do {
-            jsonData = try JSONSerialization.data(withJSONObject: numbers, options: JSONSerialization.WritingOptions()) as NSData
-            let jsonString = String(data: jsonData as Data, encoding: String.Encoding.utf8)
-            print(jsonString)
-        } catch let error as NSError {
-            print("Array to JSON conversion failed: \(error.localizedDescription)")
-        }
+//        var jsonData: NSData!
+//        do {
+//            jsonData = try JSONSerialization.data(withJSONObject: numbers, options: JSONSerialization.WritingOptions()) as NSData
+//            let jsonString = String(data: jsonData as Data, encoding: String.Encoding.utf8)
+//            print(jsonString)
+//        } catch let error as NSError {
+//            print("Array to JSON conversion failed: \(error.localizedDescription)")
+//        }
 
-        // Write that JSON to the file created earlier
+        // Write document string to the file created earlier
         do {
 //            let file = try FileHandle(forWritingTo: jsonFilePath!)
-            let tempString = "Hello World"
+//            let tempString = "Hello World"
 //            file.write(jsonData as Data)
             let urlPath = URL(fileURLWithPath: documentsDirectoryPathString)
             let url = urlPath.appendingPathComponent("temp.bali")
-            try tempString.write(to: url, atomically: true, encoding: String.Encoding.utf8)
+            try certificate!.write(to: url, atomically: true, encoding: String.Encoding.utf8)
             print("JSON data was written to the file successfully!")
         } catch let error as NSError {
             print("Couldn't write to file: \(error.localizedDescription)")
         }
+        stackManager()
     }
     
     func uploadFile(with resource: String, type: String){
@@ -277,6 +274,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
 //            }
 //            return nil
 //        }
+        stackManager()
     }
     
     func transitionToSubView(){
@@ -312,7 +310,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         disconnectCheckmark.isHidden = true
         
         globalStack = []
-        var openFunctionCall : [functionCalls] = [.disconnectDevice, .signBytes, .generateKeys, .connectDevice, .transitionSubView, .generateAlert]
+        var openFunctionCall : [functionCalls] = [.disconnectDevice, .uploadFile, .createTempFile, .signBytes, .generateKeys, .connectDevice, .transitionSubView, .generateAlert]
         for function in openFunctionCall{
             globalStack!.append(function)
         }
@@ -388,6 +386,16 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
             let certificateBytes: [UInt8] = Array(certificate!.utf8)
 //            print("Certificate: \(certificateBytes)")
             self.signBytes(certificateBytes)
+        case .createTempFile:
+            createTempFile()
+        case .uploadFile:
+            if transaction == true{
+                uploadFile(with: "transaction", type: "bali")
+            }
+            else{
+                uploadFile(with: "certificate", type: "bali")
+            }
+            print("UPLOAD TO AWS SUCCESS")
         default:
             print("default case")
         }
