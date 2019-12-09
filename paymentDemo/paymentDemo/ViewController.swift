@@ -50,8 +50,8 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     var REQUEST_TYPE : UInt8?
     
     // Timer for connecting to peripheral - will display "not connected" after 10 seconds if cannot find peripheral
-    var connected = false
-    var transaction = false
+    var isConnected = false
+    var isTransaction = false
     
     // global stack for function calls
     var globalStack : [functionCalls]?
@@ -69,7 +69,10 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
  
     // alertMessage to display to user
     var alertMessage : String?
+
     var certificate : String?
+    var transaction : String?
+    var document : String?
     
     enum stateApp{
         case noKeys
@@ -210,7 +213,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
 //            file.write(jsonData as Data)
             let urlPath = URL(fileURLWithPath: documentsDirectoryPathString)
             let url = urlPath.appendingPathComponent("temp.bali")
-            try certificate!.write(to: url, atomically: true, encoding: String.Encoding.utf8)
+            try document!.write(to: url, atomically: true, encoding: String.Encoding.utf8)
             print("JSON data was written to the file successfully!")
         } catch let error as NSError {
             print("Couldn't write to file: \(error.localizedDescription)")
@@ -218,27 +221,24 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         stackManager()
     }
     
-    func uploadFile(with resource: String, type: String){
+    func uploadFile(with resource: String){
         let documentsDirectoryPathString = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first!
         let documentsDirectoryPath = NSURL(string: documentsDirectoryPathString)!
         
-//        let localImagePath = Bundle.main.path(forResource: resource, ofType: type)!
-//        let url = URL(fileURLWithPath: localImagePath)
         let urlPath = URL(fileURLWithPath: documentsDirectoryPathString)
         let url = urlPath.appendingPathComponent("temp.bali")
         print(url)
-        let remoteName = "\(resource).\(type)"
+        let remoteName = "\(resource).bali"
         let S3BucketName = "craterdog-bali-documents-us-west-2"
-//        let S3BucketName = "armordtest"
         
         let uploadRequest = AWSS3TransferManagerUploadRequest()!
         uploadRequest.body = url
         uploadRequest.key = remoteName
         uploadRequest.bucket = S3BucketName
-//        uploadRequest.contentType = "image/jpeg"
-        uploadRequest.contentType = "text/plain"
-//        uploadRequest.acl = .publicReadWrite
-        // DONT SET AN ACL
+        uploadRequest.contentType = "application/bali"
+
+        // DONT SET AN ACL (ACLs are obsolete)
+        // uploadRequest.acl = .publicReadWrite
         
         let transferManager = AWSS3TransferManager.default()
         transferManager.upload(uploadRequest).continueWith(executor: AWSExecutor.mainThread()){ (task) -> Any? in
@@ -251,29 +251,6 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
             return nil
         }
     
-        
-//        let key = "\(resource).\(type)"
-//        let localImagePath = Bundle.main.path(forResource: resource, ofType: type)!
-//        let localImageUrl = URL(fileURLWithPath: localImagePath)
-//
-//        let request = AWSS3TransferManagerUploadRequest()!
-////        request.bucket = "craterdog-bali-documents-us-west-2"
-//        request.bucket = "armor-d-test"
-////        request.bucket = "craterdog-bali-documents-us-west-2.s3.amazonaws.com"
-//        request.key = key
-//        request.body = localImageUrl
-//        request.acl = .publicReadWrite
-//
-//        let transferManager = AWSS3TransferManager.default()
-//        transferManager.upload(request).continueWith(executor: AWSExecutor.mainThread()){ (task) -> Any? in
-//            if let error = task.error {
-//                print(error)
-//            }
-//            if task.result != nil{
-//                print("Uploaded \(key)")
-//            }
-//            return nil
-//        }
         stackManager()
     }
     
@@ -300,7 +277,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     @IBAction func buttonPressed(_ sender: UIButton) {
         PayMerchant.isEnabled = false
         EraseKeys.isEnabled = false
-        transaction = true
+        isTransaction = true
         closeButton.isEnabled = false
         
         connectCheckmark.isHidden = true
@@ -326,7 +303,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         }
         else{
             print("Array is empty")
-            if connected{
+            if isConnected{
                 nextCall(.disconnectDevice)
             }
         }
@@ -338,7 +315,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
             connectCheckmark.isHidden = false
             connectToDevice()
         case .disconnectDevice:
-            transaction = false
+            isTransaction = false
             DisconnectDevice.isHidden = false
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { // Change `10.0` to the desired number of seconds.
                 self.disconnectFromDevice()
@@ -376,12 +353,19 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
             SignBytes.isHidden = false
             AWS_Push.isHidden = false
             let publicKeyString = base32Encode(bytes : publicKey!)
-            if transaction == true{
+            if isTransaction == true{
                 print("Transaction Certificate: Form Already Created")
             }
             else{
                 print("Standard Certificate")
-                certificate = generateCertificate(accountTag: accountTag, publicKey: publicKeyString)
+                let documentTag = randomBytes(size: TAG_SIZE)
+                let documentVersion = "v1"
+                certificate = generateCertificate(
+                    accountTag: accountTag,
+                    publicKey: publicKeyString,
+                    documentTag: documentTag,
+                    documentVersion: documentVersion
+                )
             }
             let certificateBytes: [UInt8] = Array(certificate!.utf8)
 //            print("Certificate: \(certificateBytes)")
@@ -389,11 +373,11 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         case .createTempFile:
             createTempFile()
         case .uploadFile:
-            if transaction == true{
-                uploadFile(with: "transaction", type: "bali")
+            if isTransaction == true{
+                uploadFile(with: "transaction")
             }
             else{
-                uploadFile(with: "certificate", type: "bali")
+                uploadFile(with: "certificate")
             }
             print("UPLOAD TO AWS SUCCESS")
         default:
@@ -401,39 +385,30 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         }
     }
     
-    
     func generateAlertString(){
-        // finish implementation
-        let publicKeyString = base32Encode(bytes : publicKey!)
-        var merchants : [String] = ["Starbucks", "BestBuy", "Target", "Hooters"]
-        var amounts : [Float] = [7.99, 4.99, 5.00, 1.14]
-        var randomIntMerchant = Int.random(in: 1..<4)
-        var randomFloatPrice = Int.random(in: 1..<4)
-        var merchant : String = merchants[randomIntMerchant]
-        var amount : Float = amounts[randomFloatPrice]
-        
-        // we only want the first 8 numbers of the account number
-        // so we need to get its index
-        var tagIndex = accountTag.index(accountTag.startIndex, offsetBy: 8)
-        let accountIDSubstring = accountTag[..<tagIndex]
-        var date = Date()
-        let formatterDate = DateFormatter()
-        let formatterTime = DateFormatter()
-    
-        formatterDate.dateFormat = "MM-dd-yyyy"
-        var dateFormatted : String = formatterDate.string(from: date)
-        
-        formatterTime.dateFormat = "HH:mm"
-        var timeFormatted : String = formatterTime.string(from: date)
 
-        certificate = generateTransactionCertificate(date: dateFormatted, accountTag: String(accountIDSubstring), publicKey: publicKeyString, merchant: merchant, amount: String(amount))
+        var merchants = ["Starbucks", "BestBuy", "Target", "Hooters"]
+        var amounts = ["$7.99", "$4.99", "$5.00", "$1.14"]
+
+        // generate the transaction attributes
+        let transactionTag = randomBytes(size: TAG_SIZE)
+        let date = currentDate()
+        let time = currentTime()
+        var merchant = merchants[Int.random(in: 1..<4)]
+        var amount = amounts[Int.random(in: 1..<4)]
         
+        // generate a new transaction
+        transaction = generateTransaction(transactionTag: transactionTag, date: date, time: time, merchant: merchant, amount: amount)
+        
+        // we only need the first 8 characters of the transaction tag
+        let transactionId = accountTag[..<8]
+
         alertMessage = """
-        AccountId: \(accountIDSubstring)
+        TransactionId: \(transactionId)
+        Date: \(date)
+        Time: \(time)
         Merchant: \(merchant)
-        Date: \(dateFormatted)
-        Time: \(timeFormatted)
-        Amount: $\(amount)
+        Amount: \(amount)
         """
     }
     
@@ -749,7 +724,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         centralManager?.scanForPeripherals(withServices: [BLEService_UUID] , options: nil)
         DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) { // Change `10.0` to the desired number of seconds.
             // Code you want to be delayed
-            if self.connected == false{
+            if self.isConnected == false{
                 ProgressHUD.showError("No Connection")
                 self.stopScan()
             }
@@ -797,10 +772,10 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
      */
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         ProgressHUD.showSuccess("Welcome!")
-//        if transaction == true{
+//        if isTransaction == true{
 //            transitionToSubView()
 //        }
-        connected = true
+        isConnected = true
         print("*****************************")
         print("Connection complete")
         print("Peripheral info: \(blePeripheral)")
