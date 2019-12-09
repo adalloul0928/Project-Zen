@@ -25,7 +25,7 @@ class Citation {
         var citation = citationTemplate.replacingOccurrences(of: "{timestamp}", with: timestamp)
         citation = citation.replacingOccurrences(of: "{tag}", with: tag)
         citation = citation.replacingOccurrences(of: "{version}", with: version)
-        citation = citation.replacingOccurrences(of: "{digest}", with: formatter.indentLines(string: digest, level: 2))
+        citation = citation.replacingOccurrences(of: "{digest}", with: formatter.indentLines(string: digest, level: level + 2))
         return citation
     }
 

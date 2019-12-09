@@ -7,7 +7,7 @@ let certificateTemplate = """
 ](
     $type: /bali/notary/Certificate/v1
     $tag: {tag}
-    $version: v1
+    $version: {version}
     $permissions: /bali/permissions/public/v1
     $previous: none
 )
@@ -18,6 +18,7 @@ class Certificate {
     let account: String
     let publicKey: String
     let tag = formatter.generateTag()
+    let version = "v1"
 
     init(account: String, publicKey: String) {
         self.account = account
@@ -29,6 +30,7 @@ class Certificate {
         certificate = certificate.replacingOccurrences(of: "{account}", with: account)
         certificate = certificate.replacingOccurrences(of: "{publicKey}", with: publicKey)
         certificate = certificate.replacingOccurrences(of: "{tag}", with: tag)
+        certificate = certificate.replacingOccurrences(of: "{version}", with: version)
         return certificate
     }
 
