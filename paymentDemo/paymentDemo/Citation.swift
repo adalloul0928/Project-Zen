@@ -9,7 +9,7 @@ let citationTemplate = """
 ]($type: /bali/notary/Citation/v1)
 """
 
-class Citation {
+class Citation : Content {
     let timestamp = formatter.currentTimestamp()
     let tag: String
     let version: String
@@ -25,8 +25,8 @@ class Citation {
         var citation = citationTemplate.replacingOccurrences(of: "{timestamp}", with: timestamp)
         citation = citation.replacingOccurrences(of: "{tag}", with: tag)
         citation = citation.replacingOccurrences(of: "{version}", with: version)
-        citation = citation.replacingOccurrences(of: "{digest}", with: formatter.indentLines(string: digest, level: level + 2))
-        return citation
+        citation = citation.replacingOccurrences(of: "{digest}", with: formatter.indentLines(string: digest, level: 2))
+        return formatter.indentLines(string: citation, level: level)
     }
 
 }

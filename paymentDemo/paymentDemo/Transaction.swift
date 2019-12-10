@@ -14,7 +14,7 @@ let transactionTemplate = """
 )
 """
 
-class Transaction {
+class Transaction : Content {
     let transaction = formatter.generateTag()
     let date = formatter.currentDate()
     let time = formatter.currentTime()
@@ -34,7 +34,7 @@ class Transaction {
         transaction = transaction.replacingOccurrences(of: "{merchant}", with: merchant)
         transaction = transaction.replacingOccurrences(of: "{amount}", with: amount)
         transaction = transaction.replacingOccurrences(of: "{tag}", with: tag)
-        return transaction
+        return formatter.indentLines(string: transaction, level: level)
     }
 
 }

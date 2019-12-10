@@ -13,7 +13,7 @@ let certificateTemplate = """
 )
 """
 
-class Certificate {
+class Certificate : Content {
     let timestamp = formatter.currentTimestamp()
     let account: String
     let publicKey: String
@@ -31,7 +31,7 @@ class Certificate {
         certificate = certificate.replacingOccurrences(of: "{publicKey}", with: publicKey)
         certificate = certificate.replacingOccurrences(of: "{tag}", with: tag)
         certificate = certificate.replacingOccurrences(of: "{version}", with: version)
-        return certificate
+        return formatter.indentLines(string: certificate, level: level)
     }
 
 }
