@@ -29,7 +29,6 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     var notifyCharacteristic : CBCharacteristic? // UART_NOTIFICATION_ID
     var writeCharacteristic : CBCharacteristic? // UART_WRITE_ID
     var characteristicASCIIValue = NSString()
-    var validSignatureBool : Bool = false
     
     // Create instance variables of the CBCentralManager
     var centralManager: CBCentralManager? // central manager object is the iphone device
@@ -37,8 +36,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     
     // These variables are for the access of keys 
     var publicKey : [UInt8]?
-    var secret = [UInt8](repeating: 0, count: KEY_SIZE)  // look for unsigned 8-bit int
-    var previousSecret : [UInt8]?
+    var mobileKey = [UInt8](repeating: 0, count: KEY_SIZE)  // look for unsigned 8-bit int
     var signedBytes : [UInt8]? // equivalent to signature
     
     // These variables capture the state of the HSM proxy
@@ -47,59 +45,45 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     let BLE_Characteristic_uuid_Tx = CBUUID(string: UART_NOTIFICATION_ID)
     
     // Global variable to know what request we've made to check in func checkResponse()
-    var REQUEST_TYPE : UInt8?
+    var requestType : UInt8?
     
     // Timer for connecting to peripheral - will display "not connected" after 10 seconds if cannot find peripheral
     var isConnected = false
-    var isTransaction = false
     
     // global stack for function calls
     var globalStack : [functionCalls]?
     
     // To save the generated key
     let defaults = UserDefaults.standard
-    var savedPublicValue : [UInt8]?
-    var savedSecret : [UInt8]?
     
-    // Account tag for a user
-    let accountTag = randomBytes(size: TAG_SIZE)
+    // Account tag for the user
+    let account = formatter.generateTag()
     
+    // Request attributes
     var numBlocks : Int = 0
-    var signBytesRequest : [UInt8]?
+    var request : [UInt8]?
  
     // alertMessage to display to user
     var alertMessage : String?
 
-    var certificate : String?
-    var transaction : String?
-    var document : String?
+    // content and documents
+    var certificate : Certificate?
+    var transaction : Transaction?
+    var document : Document?
+    var citation : Citation?
     
-    enum stateApp{
-        case noKeys
-        case oneKey
-        case twoKeys
-    }
-        
-    enum functionCalls{
-        case connectDevice
-        case transitionSubView
-        case disconnectDevice
+    enum functionCalls {
         case generateAlert
+        case transitionSubView
+        case connectDevice
         case generateKeys
-        case rotateKeys
+        case signDocument
+        case uploadDocument
+        case citeDocument
+        case uploadCitation
         case eraseKeys
-        case signBytes
-        case validSignature
-        case createTempFile
-        case uploadFile
+        case disconnectDevice
     }
-    
-    struct Keys {
-        static let savedPublicKey = "savedPublicKey"
-        static let savedPrivateKey = "savedPrivateKey"
-    }
-    
-
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -127,12 +111,9 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         PayMerchant.layer.cornerRadius = PayMerchant.frame.size.height/2
         processView.layer.cornerRadius = PayMerchant.frame.size.height/2
         
-        // load the function stack when first loading the program
-        globalStack = []
-        var openFunctionCall : [functionCalls] = [.disconnectDevice, .uploadFile, .createTempFile, .signBytes, .generateKeys, .eraseKeys, .connectDevice]
-        for function in openFunctionCall{
-            globalStack!.append(function)
-        }
+        // load the function stack when first loading the program (generate keys, sign and upload certificate)
+        globalStack = [.disconnectDevice, .uploadDocument, .signDocument, .generateKeys, .eraseKeys, .connectDevice]
+
         // Do any additional setup after loading the view.
        centralManager = CBCentralManager(delegate: self, queue: nil)
     }
@@ -157,7 +138,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     
     @IBOutlet weak var generateKeysCheckmark: UIImageView!
     
-    @IBOutlet weak var signBytesCheckmark: UIImageView!
+    @IBOutlet weak var signDocumentCheckmark: UIImageView!
     
     @IBOutlet weak var AWSPushCheckmark: UIImageView!
     
@@ -172,92 +153,42 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     
     @IBOutlet weak var processView: UIView!
     
-    func createTempFile(){
-        let documentsDirectoryPathString = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first!
-        let documentsDirectoryPath = NSURL(string: documentsDirectoryPathString)!
-
-        let filePath = documentsDirectoryPath.appendingPathComponent("temp.bali")
+    func uploadDocument() {
         let fileManager = FileManager.default
-        var isDirectory: ObjCBool = false
 
-        // creating a file in the Documents folder
-        if !fileManager.fileExists(atPath: filePath!.absoluteString, isDirectory: &isDirectory) {
-            let created = fileManager.createFile(atPath: filePath!.absoluteString, contents: nil, attributes: nil)
-            if created {
-                print(filePath!.absoluteString)
-                print("File created ")
-            } else {
-                print("Couldn't create file for some reason")
-            }
-        } else {
-            print("File already exists")
-        }
-
-        // creating an array of test data
-//        var numbers = ["test1","test2","test3"]
-
-        // creating JSON out of the above array
-//        var jsonData: NSData!
-//        do {
-//            jsonData = try JSONSerialization.data(withJSONObject: numbers, options: JSONSerialization.WritingOptions()) as NSData
-//            let jsonString = String(data: jsonData as Data, encoding: String.Encoding.utf8)
-//            print(jsonString)
-//        } catch let error as NSError {
-//            print("Array to JSON conversion failed: \(error.localizedDescription)")
-//        }
-
-        // Write document string to the file created earlier
+        // Write the document to a file
+        let path = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let filename = path.appendingPathComponent("document.bali")
         do {
-//            let file = try FileHandle(forWritingTo: jsonFilePath!)
-//            let tempString = "Hello World"
-//            file.write(jsonData as Data)
-            let urlPath = URL(fileURLWithPath: documentsDirectoryPathString)
-            let url = urlPath.appendingPathComponent("temp.bali")
-            try document!.write(to: url, atomically: true, encoding: String.Encoding.utf8)
-            print("JSON data was written to the file successfully!")
+            try document!.write(to: filename, atomically: true, encoding: String.Encoding.utf8)
+            print("The document was written to the file successfully.")
         } catch let error as NSError {
             print("Couldn't write to file: \(error.localizedDescription)")
         }
-        stackManager()
-    }
-    
-    func uploadFile(with resource: String){
-        let documentsDirectoryPathString = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first!
-        let documentsDirectoryPath = NSURL(string: documentsDirectoryPathString)!
-        
-        let urlPath = URL(fileURLWithPath: documentsDirectoryPathString)
-        let url = urlPath.appendingPathComponent("temp.bali")
-        print(url)
-        let remoteName = "\(resource).bali"
-        let S3BucketName = "craterdog-bali-documents-us-west-2"
-        
-        let uploadRequest = AWSS3TransferManagerUploadRequest()!
-        uploadRequest.body = url
-        uploadRequest.key = remoteName
-        uploadRequest.bucket = S3BucketName
-        uploadRequest.contentType = "application/bali"
 
-        // DONT SET AN ACL (ACLs are obsolete)
-        // uploadRequest.acl = .publicReadWrite
-        
+        // upload the file to AWS S3 bucket
+        let uploadRequest = AWSS3TransferManagerUploadRequest()!
+        uploadRequest.body = filename
+        uploadRequest.key = "documents/\(document.content.tag.suffix(32))/\(document.content.version).bali"
+        uploadRequest.bucket = "craterdog-bali-documents-us-west-2"
+        uploadRequest.contentType = "application/bali"
+        // uploadRequest.acl = .publicReadWrite  **DONT SET AN ACL (ACLs are obsolete)**
         let transferManager = AWSS3TransferManager.default()
-        transferManager.upload(uploadRequest).continueWith(executor: AWSExecutor.mainThread()){ (task) -> Any? in
+        transferManager.upload(uploadRequest).continueWith(executor: AWSExecutor.mainThread()) { (task) -> Any? in
             if let error = task.error {
-                print(error)
+                print("Unable to upload the file: \(error)")
             }
-            if task.result != nil{
-                print("Uploaded Success")
+            if task.result != nil {
+                print("The file was uploaded successfully.")
             }
             return nil
         }
-    
-        stackManager()
     }
     
-    func transitionToSubView(){
+    func transitionToSubView() {
         processView.isHidden = false
         self.view.backgroundColor = UIColor.lightGray
-        stackManager()
+        queueNextFunction()
     }
     
     @IBOutlet weak var EraseKeys: UIButton!
@@ -266,219 +197,101 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         PayMerchant.isEnabled = false
         EraseKeys.isEnabled = false
         
-        globalStack = []
-        var openFunctionCall : [functionCalls] = [.disconnectDevice, .eraseKeys, .connectDevice]
-        for function in openFunctionCall{
-            globalStack!.append(function)
-        }
-        stackManager()
+        globalStack = [.disconnectDevice, .eraseKeys, .connectDevice]
+        queueNextFunction()
     }
     
     @IBAction func buttonPressed(_ sender: UIButton) {
         PayMerchant.isEnabled = false
         EraseKeys.isEnabled = false
-        isTransaction = true
         closeButton.isEnabled = false
         
         connectCheckmark.isHidden = true
         generateKeysCheckmark.isHidden = true
-        signBytesCheckmark.isHidden = true
+        signDocumentCheckmark.isHidden = true
         AWSPushCheckmark.isHidden = true
         disconnectCheckmark.isHidden = true
         
-        globalStack = []
-        var openFunctionCall : [functionCalls] = [.disconnectDevice, .uploadFile, .createTempFile, .signBytes, .generateKeys, .connectDevice, .transitionSubView, .generateAlert]
-        for function in openFunctionCall{
-            globalStack!.append(function)
-        }
-        stackManager()
+        globalStack = [.disconnectDevice, .uploadDocument, .signDocument, .generateKeys, .connectDevice, .transitionSubView, .generateAlert]
+        queueNextFunction()
     }
     
     
-    func stackManager(){
-        let curr = self.globalStack!.popLast()
-        
-        if let currentFunction = curr{
-            nextCall(currentFunction)
+    func queueNextFunction() {
+        let nextFunction = globalStack!.popLast()
+        switch(nextFunction) {
+            case .generateAlert:
+                generateAlert()
+            case .transitionSubView:
+                transitionToSubView()
+            case .connectDevice:
+                connectToDevice()
+            case .generateKeys:
+                generateKeys()
+            case .signDocument:
+                signDocument()
+            case .uploadDocument:
+                uploadDocument()
+            case .eraseKeys:
+                eraseKeys()
+            default:
+                disconnectFromDevice()
         }
-        else{
-            print("Array is empty")
-            if isConnected{
-                nextCall(.disconnectDevice)
-            }
-        }
+        view.layoutIfNeeded()
     }
     
-    func nextCall(_ currentFunc: functionCalls){
-        switch(currentFunc) {
-        case .connectDevice:
-            connectCheckmark.isHidden = false
-            connectToDevice()
-        case .disconnectDevice:
-            isTransaction = false
-            DisconnectDevice.isHidden = false
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { // Change `10.0` to the desired number of seconds.
-                self.disconnectFromDevice()
-            }
-            disconnectCheckmark.isHidden = false
-            closeButton.isEnabled = true
-            PayMerchant.isHidden = false
-            EraseKeys.isHidden = false
-            self.view.layoutIfNeeded()
-        case .transitionSubView:
-            self.transitionToSubView()
-        case .eraseKeys:
-            savedPublicValue = nil
-            savedSecret = nil
-            publicKey = nil
-            saveSecretKeyValue()
-            savePublicKeyValue()
-            eraseKeys()
-        case .generateKeys:
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { // Change `10.0` to the desired number of seconds.
-                if self.publicKey == nil{
-                    self.generateKeys()
-                }
-                else{
-                    self.generateKeysCheckmark.isHidden = false
-                    self.stackManager()
-                }
-            }
-        case .generateAlert:
-            generateAlertString()
-            generateAlert(alertMessage!)
-        case .rotateKeys:
-            rotateKeys()
-        case .signBytes:
-            SignBytes.isHidden = false
-            AWS_Push.isHidden = false
-            let publicKeyString = base32Encode(bytes : publicKey!)
-            if isTransaction == true{
-                print("Transaction Certificate: Form Already Created")
-            }
-            else{
-                print("Standard Certificate")
-                let documentTag = randomBytes(size: TAG_SIZE)
-                let documentVersion = "v1"
-                certificate = generateCertificate(
-                    accountTag: accountTag,
-                    publicKey: publicKeyString,
-                    documentTag: documentTag,
-                    documentVersion: documentVersion
-                )
-            }
-            let certificateBytes: [UInt8] = Array(certificate!.utf8)
-//            print("Certificate: \(certificateBytes)")
-            self.signBytes(certificateBytes)
-        case .createTempFile:
-            createTempFile()
-        case .uploadFile:
-            if isTransaction == true{
-                uploadFile(with: "transaction")
-            }
-            else{
-                uploadFile(with: "certificate")
-            }
-            print("UPLOAD TO AWS SUCCESS")
-        default:
-            print("default case")
-        }
-    }
-    
-    func generateAlertString(){
 
-        var merchants = ["Starbucks", "BestBuy", "Target", "Hooters"]
-        var amounts = ["$7.99", "$4.99", "$5.00", "$1.14"]
-
-        // generate the transaction attributes
-        let transactionTag = randomBytes(size: TAG_SIZE)
-        let date = currentDate()
-        let time = currentTime()
-        var merchant = merchants[Int.random(in: 1..<4)]
-        var amount = amounts[Int.random(in: 1..<4)]
-        
-        // generate a new transaction
-        transaction = generateTransaction(transactionTag: transactionTag, date: date, time: time, merchant: merchant, amount: amount)
-        
-        // we only need the first 8 characters of the transaction tag
-        let transactionId = accountTag[..<8]
-
-        alertMessage = """
-        TransactionId: \(transactionId)
-        Date: \(date)
-        Time: \(time)
-        Merchant: \(merchant)
-        Amount: \(amount)
-        """
-    }
-    
-    
-    func checkResponse(response : [UInt8]){
-        if response[0] == 255{
-            print("Case \(REQUEST_TYPE): Failed 255")
-        }
-        else{
-            switch(REQUEST_TYPE) {
+    func checkResponse(response : [UInt8]) {
+        if response[0] == 255 {
+            print("Case \(requestType): Failed 255")
+            // TODO: reset the stack manager
+        } else {
+            switch(requestType) {
             case 0:
                 print("Processing Blocks Response")
-                processRequest(signBytesRequest!)
+                // process the next block (bypass the stack manager)
+                processRequest(request)
             case 1:
                 print("Generate Keys Response")
-                if response.count == 32{
-                    self.generateKeysCheckmark.isHidden = false
-                    publicKey = response
-                    savedPublicValue = publicKey
-                    savedSecret = secret
-                    savePublicKeyValue()
-                    saveSecretKeyValue()
-                    print("Public Key: \(publicKey)")
-                    print("Secret: \(secret)")
-                    self.stackManager()
-                }
-                else{
-                    print("Generate Keys Failed")
-                    self.disconnectFromDevice()
-                }
+                self.generateKeysCheckmark.isHidden = false
+                publicKey = response
+                savePublicKeyValue()
+                saveMobileKeyValue()
+                print("Public Key: \(publicKey)")
+                print("Mobile Key: \(mobileKey)")
+                self.queueNextFunction()
             case 2:
                 // Add in saving default values
                 print("Rotate Keys Response")
-                if response.count == 32{
-                    publicKey = response
-                    print("New Public Key: \(publicKey)")
-                }
+                publicKey = response
+                print("New Public Key: \(publicKey)")
+                self.queueNextFunction()
             case 3:
                 print("Erase Keys Response")
-                if response[0] == 1{
-                    print("SUCCESS")
+                if response[0] == 1 {
+                    print("Keys erased")
+                } else if response[1] == 0 {
+                    print("Did not erase keys")
                 }
-                else if response[1] == 0{
-                    print("Did Not Erase Keys")
-                }
-                self.stackManager()
+                self.queueNextFunction()
             case 4:
                 print("CASE Digest Bytes - NEED TO IMPLEMENT")
             case 5:
                 print("Sign Bytes Response")
-                if response.count == 64{
-                    self.signBytesCheckmark.isHidden = false
-                    self.AWSPushCheckmark.isHidden = false
-                    signedBytes = response
-                    print("Signed Bytes: \(signedBytes)")
-//                    ProgressHUD.showSuccess("Success!")
-                    self.stackManager()
-                }
-                else{
-                    ProgressHUD.showError("Payment Failed")
-                    self.disconnectFromDevice()
-                }
+                self.signDocumentCheckmark.isHidden = false
+                self.AWSPushCheckmark.isHidden = false
+                signedBytes = response
+                print("Signed Bytes: \(signedBytes)")
+                let signature = "'\(formatter.formatLines(formatter.base32Encode(signedBytes)))'"
+                document = Document(account: account, content: content, certificate: citation, signature: signature)
+                uploadDocument()
+                self.queueNextFunction()
             case 6:
                 print("Signature Valid Response")
-                if response[0] == 1{
-                    validSignatureBool = true // may not need??
+                if response[0] == 1 {
                     print("Is Valid Signature")
-                    self.stackManager()
-                }
-                else if response[1] == 0{
+                    self.queueNextFunction()
+                } else if response[1] == 0 {
                     print("Signature NOT Valid")
                     self.disconnectFromDevice()
                 }
@@ -495,37 +308,25 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     /**
      * This function generates a new public-private key pair.
      */
-    func generateKeys(){
-        do {
-            if blePeripheral == nil {
-                print("Not Connected to Device")
-                // FIX TO THROW ERROR IF NOT CONNECTED TO DEVICE
+    func generateKeys() {
+        if self.publicKey == nil {
+            do {
+                print("Generating a new key pair.")
+                let status = SecRandomCopyBytes(kSecRandomDefault, KEY_SIZE, &mobileKey)
+                if status == errSecSuccess { // Always test the status.
+                    print(mobileKey)
+                    // Prints something different every time you run.
+                }
+                request = formatRequest("generateKeys", mobileKey)
+                processRequest(request)
+            } catch {
+                print("A new key pair could not be generated")
             }
-            let status = SecRandomCopyBytes(kSecRandomDefault, KEY_SIZE, &secret)
-            if status == errSecSuccess { // Always test the status.
-                print(secret)
-                // Prints something different every time you run.
-            }
-            var request : [UInt8] = formatRequest("generateKeys", secret)
-            print("Generate Keys")
-            processRequest(request)
-        } catch {
-            print("A new key pair could not be generated")
+        } else {
+            // the key pair already exists so continue with the next step
+            self.generateKeysCheckmark.isHidden = false
+            self.queueNextFunction()
         }
-    }
-    
-    
-    /**
-     * This function replaces the existing public-private key pair with a new one.
-     *
-     * @returns A byte array containing the new public key.
-     */
-    func rotateKeys() {
-        print("Rotating Keys")
-        previousSecret = secret
-        SecRandomCopyBytes(kSecRandomDefault, KEY_SIZE, &secret)
-        var request : [UInt8] = formatRequest("rotateKeys", previousSecret, secret)
-        processRequest(request)
     }
     
     
@@ -534,35 +335,31 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
      *
      * @returns Whether or not the keys were successfully erased.
      */
-    func eraseKeys(){
+    func eraseKeys() {
         print("Erasing Keys")
-        var request : [UInt8] = formatRequest("eraseKeys")
+        publicKey = nil
+        saveMobileKeyValue()
+        savePublicKeyValue()
+        request = formatRequest("eraseKeys")
         processRequest(request)
     }
     
     
     /**
      * This function generates a digital signature of the specified bytes using
-     * the current private key (or the old private key, one time only, if it exists).
-     * This allows a new certificate to be signed using the previous private key.
-     * The resulting digital signature can then be verified using the corresponding
-     * public key.
+     * the private key. The resulting digital signature can then be verified
+     * using the corresponding public key.
      *
      * @param bytes A byte array containing the bytes to be digitally signed.
      * @returns A byte array containing the resulting digital signature.
      */
-    func signBytes(_ bytes : [UInt8]) {
-        print("Signing Bytes")
-//        SignBytes.isHidden = false
-//        AWS_Push.isHidden = false
-        if (previousSecret != nil) {
-            // we are in the process of rotating keys so use the previous secret
-            signBytesRequest = formatRequest("signBytes", previousSecret, bytes)
-            previousSecret = nil
-        } else {
-            signBytesRequest = formatRequest("signBytes", secret, bytes)
-        }
-        processRequest(signBytesRequest!)
+    func signDocument() {
+        print("Signing the document")
+        SignBytes.isHidden = false
+        AWS_Push.isHidden = false
+        let bytes: [UInt8] = Array(document!.utf8)
+        request = formatRequest("signBytes", mobileKey, bytes)
+        processRequest(request)
     }
     
     
@@ -579,7 +376,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
      * @returns Whether or not the digital signature is valid.
      */
     func validSignature(aPublicKey : [UInt8], signature : [UInt8], bytes : [UInt8]) {
-        var request : [UInt8] = formatRequest("validSignature", aPublicKey, signature, bytes)
+        request = formatRequest("validSignature", aPublicKey, signature, bytes)
         processRequest(request)
     }
     
@@ -604,28 +401,28 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
      * @param args Zero or more byte arrays containing the bytes for each argument.
      * @returns A byte array containing the bytes for the entire request.
      */
-    func formatRequest(_ type : String, _ args : [UInt8]?...) -> [UInt8]{
+    func formatRequest(_ type : String, _ args : [UInt8]?...) -> [UInt8] {
         switch(type) {
         case "loadBlocks":
-            REQUEST_TYPE = 0
+            requestType = 0
         case "generateKeys":
-            REQUEST_TYPE = 1
+            requestType = 1
         case "rotateKeys":
-            REQUEST_TYPE = 2
+            requestType = 2
         case "eraseKeys":
-            REQUEST_TYPE = 3
+            requestType = 3
         case "digestBytes":
-            REQUEST_TYPE = 4
+            requestType = 4
         case "signBytes":
-            REQUEST_TYPE = 5
+            requestType = 5
         case "validSignature":
-            REQUEST_TYPE = 6
+            requestType = 6
         default:
             print("Error: default in switch case")
         }
-        var request : [UInt8] = [REQUEST_TYPE!, UInt8(args.count)]
+        request : [UInt8] = [requestType!, UInt8(args.count)]
         var length : Int
-        for arg in args{
+        for arg in args {
             length = arg!.count
             request += [UInt8(length >> 8), UInt8(length & 0xFF)] // the length of this argument
             request += arg! // the argument bytes
@@ -644,7 +441,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
      *
      * @param request A byte array containing the request to be processed.
      */
-    func processRequest(_ request : [UInt8]){
+    func processRequest(_ request : [UInt8]) {
         var buffer : [UInt8]
         var offset : Int
         var blockSize : Int
@@ -652,7 +449,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         // refactor later to make numBlocks equivalent to numExtraBlocks and change according code
         numBlocks = Int(temp.rounded(.up))
         
-        if numBlocks > 1{
+        if numBlocks > 1 {
             print("NumBlocks: \(numBlocks)")
             // the offset includes the header bytes
             offset = (numBlocks - 1) * BLOCK_SIZE + 2
@@ -662,8 +459,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
             
             // concatenate a header and the current block bytes
             buffer = [0x00, UInt8(numBlocks - 1)] + Array(request[offset ..< (offset + blockSize)])
-        }
-        else{
+        } else {
             print("NumBlocks: \(numBlocks)")
             blockSize = min(request.count, BLOCK_SIZE + 2);
             buffer = Array(request[0..<blockSize])  // includes the actual header
@@ -678,7 +474,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
      *
      * @param request A byte array containing the request to be processed.
      */
-    func processBlock(_ val : [UInt8]){
+    func processBlock(_ val : [UInt8]) {
         let ns = NSData(bytes: val, length: val.count)
         print("Wrote Characteristic - Processed Block")
         blePeripheral!.writeValue(ns as Data, for: writeCharacteristic!, type: CBCharacteristicWriteType.withResponse)
@@ -690,7 +486,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
      *
      * @param request The CentralManager object representing the central (iPhone)
      */
-    func centralManagerDidUpdateState(_ central: CBCentralManager){
+    func centralManagerDidUpdateState(_ central: CBCentralManager) {
         print("CentralManager is initialized")
         switch central.state {
         case .unknown:
@@ -722,9 +518,9 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     func startScan() {
         print("Now Scanning...")
         centralManager?.scanForPeripherals(withServices: [BLEService_UUID] , options: nil)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) { // Change `10.0` to the desired number of seconds.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) { // the desired number of seconds delay
             // Code you want to be delayed
-            if self.isConnected == false{
+            if self.isConnected == false {
                 ProgressHUD.showError("No Connection")
                 self.stopScan()
             }
@@ -735,7 +531,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     /**
      * This function is called to stop scanning for peripherals.
      */
-    func stopScan(){
+    func stopScan() {
         print("stopped scanning")
         centralManager!.stopScan()
     }
@@ -753,7 +549,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
             print ("Advertisement Data : \(advertisementData)")
             blePeripheral = peripheral
         }
-        stackManager()
+        queueNextFunction()
     }
     
     
@@ -762,7 +558,8 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
      * call the "didConnect" function below.
      */
     func connectToDevice() {
-        print("Connect to Device")
+        print("Connecting to a device")
+        connectCheckmark.isHidden = false
         centralManager?.connect(blePeripheral!, options: nil)
     }
     
@@ -772,9 +569,6 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
      */
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         ProgressHUD.showSuccess("Welcome!")
-//        if isTransaction == true{
-//            transitionToSubView()
-//        }
         isConnected = true
         print("*****************************")
         print("Connection complete")
@@ -838,7 +632,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
                 print("Rx Characteristic: \(characteristic.uuid)")
                 
             }
-            if characteristic.uuid.isEqual(BLE_Characteristic_uuid_Tx){
+            if characteristic.uuid.isEqual(BLE_Characteristic_uuid_Tx) {
                 notifyCharacteristic = characteristic
                 print("Tx Characteristic: \(characteristic.uuid)")
                 
@@ -865,7 +659,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         if (characteristic.isNotifying) {
             print ("Subscribed. Notification has begun for: \(characteristic.uuid)")
         }
-        stackManager()
+        queueNextFunction()
     }
 
 
@@ -875,7 +669,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
             let characteristicData = characteristic.value!
             print("Characteristic Data: \(characteristicData)")
             var byteArray = [UInt8](characteristicData)
-            if byteArray.count > 0{
+            if byteArray.count > 0 {
                 checkResponse(response : byteArray)
             }
         }
@@ -883,7 +677,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     
     
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
-//        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { // Change `10.0` to the desired number of seconds.
+//        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { // the desired number of seconds delay
 //            ProgressHUD.showError("Disconnected")
 //        }
         print("Successfully Disconnected")
@@ -902,26 +696,54 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     
     
     func disconnectFromDevice() {
-        print("Disconnecting...")
+        print("Disconnecting from the device")
+        DisconnectDevice.isHidden = false
         if blePeripheral != nil {
-        centralManager?.cancelPeripheralConnection(blePeripheral!)
+            centralManager?.cancelPeripheralConnection(blePeripheral!)
+            blePeripheral = nil
         }
+        disconnectCheckmark.isHidden = false
+        closeButton.isEnabled = true
+        PayMerchant.isHidden = false
+        EraseKeys.isHidden = false
     }
     
     
-    func payTheBill(){
+    func payTheBill() {
         print("Paid the Bill")
-        stackManager()
+        queueNextFunction()
     }
     
-    func cancelTheBill(){
+    func cancelTheBill() {
         print("Cancelled the transaction")
-        stackManager()
+        queueNextFunction()
     }
     
     
-    func generateAlert (_ alertMessage: String){
-        let alert = UIAlertController(title: "Pay Merchant", message: alertMessage, preferredStyle: .alert)
+    func generateAlertString() {
+
+        var merchants = ["Starbucks", "BestBuy", "Target", "Hooters"]
+        var amounts = ["$7.99", "$4.99", "$5.00", "$1.14"]
+
+        // generate a new transaction
+        var merchant = merchants[Int.random(in: 1..<4)]
+        var amount = amounts[Int.random(in: 1..<4)]
+        transaction = Transaction(merchant: merchant, amount: amount)
+        
+        // we only need the first 8 characters of the transaction tag
+        alertMessage = """
+        TransactionId: \(transaction.transaction.prefix(9).suffix(8))
+        Date: \(transaction.date)
+        Time: \(transaction.time)
+        Merchant: \(transaction.merchant)
+        Amount: \(transaction.amount)
+        """
+    }
+    
+    
+    func generateAlert() {
+        generateAlertString()
+        let alert = UIAlertController(title: "Pay Merchant", message: alertMessage!, preferredStyle: .alert)
         let payAction = UIAlertAction(title: "Pay", style: .default, handler: { (UIAlertAction) in self.payTheBill()})
         let cancelPayment = UIAlertAction(title: "Cancel", style: UIAlertAction.Style.cancel, handler: { (UIAlertAction) in self.cancelTheBill()})
         
@@ -933,28 +755,24 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     
     
     func savePublicKeyValue() {
-        print("Saved Public Key Value")
-        print("savedPublicValue: \(savedPublicValue)")
-        defaults.set(savedPublicValue, forKey: Keys.savedPublicKey)
+        defaults.set(publicKey, forKey:"publicKey")
     }
     
-    func saveSecretKeyValue(){
-        print("Saved Secret Key Value")
-        print("savedSecretValue: \(savedSecret)")
-        defaults.set(savedSecret, forKey: Keys.savedPrivateKey)
+    func saveMobileKeyValue() {
+        defaults.set(mobileKey, forKey: "mobileKey")
     }
     
     
     func checkForKeys() {
-        let possibleSavedKey = defaults.array(forKey: Keys.savedPublicKey)
-        let possibleSavedSecret = defaults.array(forKey: Keys.savedPrivateKey)
+        let possibleSavedPublicKey = defaults.array(forKey: "publicKey")
+        let possibleSavedMobileKey = defaults.array(forKey: "mobileKey")
         
-        if possibleSavedKey != nil{
-            publicKey = possibleSavedKey as! [UInt8]
-            secret = possibleSavedSecret as! [UInt8]
+        if possibleSavedPublicKey != nil {
+            publicKey = possibleSavedPublicKey as! [UInt8]
+            mobileKey = possibleSavedMobileKey as! [UInt8]
         }
-        print("Check for Public Key: \(publicKey)")
-        print("Check for Secret Device Key: \(secret)")
+        print("Found saved public key: \(publicKey)")
+        print("Found saved mobile key: \(mobileKey)")
     }
 }
 

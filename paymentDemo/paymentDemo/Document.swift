@@ -20,7 +20,7 @@ let signedTemplate = """
 ]($type: /bali/notary/Document/v1)
 """
 
-class Document : Content {
+class Document {
     let timestamp = formatter.currentTimestamp()
     let account: String
     let content: Content

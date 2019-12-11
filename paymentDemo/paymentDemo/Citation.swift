@@ -9,7 +9,7 @@ let citationTemplate = """
 ]($type: /bali/notary/Citation/v1)
 """
 
-class Citation : Content {
+class Citation {
     let timestamp = formatter.currentTimestamp()
     let tag: String
     let version: String
