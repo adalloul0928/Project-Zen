@@ -542,7 +542,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         default:
             print("Error: default in switch case")
         }
-        request : [UInt8] = [requestType!, UInt8(args.count)]
+        request = [requestType!, UInt8(args.count)]
         var length : Int
         for arg in args {
             length = arg!.count
