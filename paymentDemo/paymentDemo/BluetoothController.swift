@@ -6,7 +6,6 @@
 //  Copyright © 2019 Aren Dalloul. All rights reserved.
 //
 
-// Import CoreBluetooth for BLE functionality
 import UIKit
 import CoreBluetooth
 import Foundation
@@ -30,8 +29,7 @@ class BluetoothController: CBCentralManagerDelegate, CBPeripheralDelegate {
     var characteristicASCIIValue = NSString()
     
     // Create instance variables of the CBCentralManager
-    // central manager object is the iphone device
-    var centralManager = CBCentralManager(delegate: self, queue: nil)
+    var centralManager : CBCentralManager?
     var bluetoothOffLabel = 0.0
     
     // These variables capture the state of the HSM proxy
@@ -47,6 +45,10 @@ class BluetoothController: CBCentralManagerDelegate, CBPeripheralDelegate {
     // Timer for connecting to peripheral - will display "not connected" after 10 seconds if cannot find peripheral
     var isConnected = false
     
+    init() {
+        // central manager object is the iphone device
+        self.centralManager = CBCentralManager(delegate: self, queue: nil)
+    }
     /**
      * This function is called to start scanning for peripherals specifically with the correct services.
      */

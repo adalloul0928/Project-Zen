@@ -33,6 +33,9 @@ class ViewController: UIViewController {
     var document : Document?
     var citation : Citation?
     
+    // bluetooth controller
+    var bluetooth : BluetoothController?
+    
 
     // VIEW RELATED ASPECTS
 
@@ -144,7 +147,7 @@ class ViewController: UIViewController {
         processView.layer.cornerRadius = PayMerchant.frame.size.height/2
         
         // Do any additional setup after loading the view.
-        let bluetooth = BluetoothController()
+        bluetooth = BluetoothController()
     }
 
 
