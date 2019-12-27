@@ -11,7 +11,6 @@ import CoreBluetooth
 import Foundation
 import AVKit
 import AVFoundation
-import AWSS3
 
 
 // ViewController class adopts both the central and peripheral delegates and conforms to their protocol requirements
@@ -72,28 +71,6 @@ class BluetoothController: CBCentralManagerDelegate, CBPeripheralDelegate {
         centralManager!.stopScan()
     }
     
-    /**
-     * This function is connected to the "Connect" button to connect to the peripheral we found and will automatically
-     * call the "didConnect" function below.
-     */
-    func connectToDevice() {
-        print("Connecting to a device")
-        connectCheckmark.isHidden = false
-        centralManager?.connect(blePeripheral!, options: nil)
-    }
-    
-    func disconnectFromDevice() {
-        print("Disconnecting from the device")
-        DisconnectDevice.isHidden = false
-        if blePeripheral != nil {
-            centralManager?.cancelPeripheralConnection(blePeripheral!)
-            blePeripheral = nil
-        }
-        disconnectCheckmark.isHidden = false
-        closeButton.isEnabled = true
-        PayMerchant.isHidden = false
-        EraseKeys.isHidden = false
-    }
     
     // Size of blocks sent to peripheral. (512 - 2 = 510, to account for the two leading bytes which tell peripheral what to do
     let BLOCK_SIZE : Int = 510

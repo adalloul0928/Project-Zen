@@ -249,6 +249,29 @@ class ViewController: UIViewController {
         executeNextTask()
     }
     
+    /**
+     * This function is connected to the "Connect" button to connect to the peripheral we found and will automatically
+     * call the "didConnect" function below.
+     */
+    func connectToDevice() {
+        print("Connecting to a device")
+        connectCheckmark.isHidden = false
+        bluetooth?.connect(blePeripheral!, options: nil)
+    }
+    
+    func disconnectFromDevice() {
+        print("Disconnecting from the device")
+        DisconnectDevice.isHidden = false
+        if blePeripheral != nil {
+            bluetooth?.cancelPeripheralConnection(blePeripheral!)
+            blePeripheral = nil
+        }
+        disconnectCheckmark.isHidden = false
+        closeButton.isEnabled = true
+        PayMerchant.isHidden = false
+        EraseKeys.isHidden = false
+    }
+    
     func resetState() {
         loadKeys()
 
