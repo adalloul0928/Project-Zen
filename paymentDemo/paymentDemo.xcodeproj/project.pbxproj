@@ -22,6 +22,7 @@
 		C2A1CFFD23A1C1B200E113E4 /* Formatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A1CFF823A1C1B100E113E4 /* Formatter.swift */; };
 		C2A1CFFE23A1C1B200E113E4 /* Content.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A1CFF923A1C1B200E113E4 /* Content.swift */; };
 		C2A1CFFF23A1C1B200E113E4 /* Citation.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A1CFFA23A1C1B200E113E4 /* Citation.swift */; };
+		C2B3355023B6662700F20B83 /* BluetoothController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2B3354F23B6662700F20B83 /* BluetoothController.swift */; };
 		C2F85D4723A1A69300C2DE15 /* Document.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2F85D4123A1A69300C2DE15 /* Document.swift */; };
 		C2F85D4823A1A69300C2DE15 /* Formatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2F85D4223A1A69300C2DE15 /* Formatter.swift */; };
 		C2F85D4923A1A69300C2DE15 /* Content.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2F85D4323A1A69300C2DE15 /* Content.swift */; };
@@ -51,6 +52,7 @@
 		C2A1CFF823A1C1B100E113E4 /* Formatter.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Formatter.swift; sourceTree = "<group>"; };
 		C2A1CFF923A1C1B200E113E4 /* Content.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Content.swift; sourceTree = "<group>"; };
 		C2A1CFFA23A1C1B200E113E4 /* Citation.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Citation.swift; sourceTree = "<group>"; };
+		C2B3354F23B6662700F20B83 /* BluetoothController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BluetoothController.swift; sourceTree = "<group>"; };
 		C2F85D4123A1A69300C2DE15 /* Document.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = Document.swift; path = ../../../../Document.swift; sourceTree = "<group>"; };
 		C2F85D4223A1A69300C2DE15 /* Formatter.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = Formatter.swift; path = ../../../../Formatter.swift; sourceTree = "<group>"; };
 		C2F85D4323A1A69300C2DE15 /* Content.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = Content.swift; path = ../../../../Content.swift; sourceTree = "<group>"; };
@@ -117,6 +119,7 @@
 				BE187B272377542B003ABEFB /* test.jpg */,
 				16AD5A0C23107125001797FD /* AppDelegate.swift */,
 				16AD5A0E23107125001797FD /* ViewController.swift */,
+				C2B3354F23B6662700F20B83 /* BluetoothController.swift */,
 				16AD5A1023107125001797FD /* Main.storyboard */,
 				16AD5A1323107126001797FD /* Assets.xcassets */,
 				16AD5A1523107126001797FD /* LaunchScreen.storyboard */,
@@ -265,6 +268,7 @@
 				C2A1CFFD23A1C1B200E113E4 /* Formatter.swift in Sources */,
 				C2F85D4823A1A69300C2DE15 /* Formatter.swift in Sources */,
 				C2F85D4923A1A69300C2DE15 /* Content.swift in Sources */,
+				C2B3355023B6662700F20B83 /* BluetoothController.swift in Sources */,
 				C2F85D4C23A1A69300C2DE15 /* Certificate.swift in Sources */,
 				169F5DF323108C4200AAD47E /* ProgressHUD.m in Sources */,
 				C2F85D4B23A1A69300C2DE15 /* Citation.swift in Sources */,
