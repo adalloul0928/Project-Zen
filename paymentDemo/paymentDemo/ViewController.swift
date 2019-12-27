@@ -15,7 +15,7 @@ import AVFoundation
 import AWSS3
 
 
-// ViewController class adopts both the central and peripheral delegates and conforms to their protocol's requirements
+// ViewController class adopts both the central and peripheral delegates and conforms to their protocol requirements
 class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDelegate {
 
     // MODEL RELATED ASPECTS
@@ -74,12 +74,12 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     @IBAction func eraseButton(_ sender: UIButton) {
         PayMerchant.isEnabled = false
         EraseKeys.isEnabled = false
-        globalStack = [
+        taskStack = [
             .disconnectDevice,
             .eraseKeys,
             .connectDevice
         ]
-        executeNextFunction()
+        executeNextTask()
     }
     
     // This function is called when the "Pay Merchant" button is pressed
@@ -93,14 +93,14 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         AWSPushCheckmark.isHidden = true
         disconnectCheckmark.isHidden = true
         
-        globalStack = [
+        taskStack = [
             .disconnectDevice,
             .uploadDocument,
             .signDocument,
             .connectDevice,
             .viewTransaction
         ]
-        executeNextFunction()
+        executeNextTask()
     }
     
     func viewTransaction() {
@@ -164,10 +164,10 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
     }
 
     // global stack for function calls
-    var globalStack : [functionCalls]?
+    var taskStack : [functionCalls]?
     
-    func executeNextFunction() {
-        let nextFunction = globalStack!.popLast()
+    func executeNextTask() {
+        let nextFunction = taskStack!.popLast()
         switch(nextFunction) {
             case .connectDevice:
                 connectToDevice()
@@ -243,7 +243,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
                 resetState()
             }
         }
-        executeNextFunction()
+        executeNextTask()
     }
     
     func resetState() {
@@ -259,7 +259,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         processView.isHidden = true
         
         // load the function stack when first loading the program (generate keys, sign and upload certificate)
-        globalStack = [
+        taskStack = [
             .disconnectDevice,
             .uploadDocument,
             .signDocument,
@@ -289,7 +289,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         } else {
             // the key pair already exists so continue with the next step
             generateKeysCheckmark.isHidden = false
-            executeNextFunction()
+            executeNextTask()
         }
     }
     
@@ -378,8 +378,8 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         print("Sign the transaction")
         processView.isHidden = false
         view.backgroundColor = UIColor.lightGray
-        globalStack = [.disconnectDevice, .uploadDocument, .signDocument, .connectDevice]
-        executeNextFunction()
+        taskStack = [.disconnectDevice, .uploadDocument, .signDocument, .connectDevice]
+        executeNextTask()
     }
     
     // This function is called when the "Cancel" button has been pressed
@@ -387,7 +387,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         print("Cancel the transaction")
         processView.isHidden = false
         view.backgroundColor = UIColor.lightGray
-        executeNextFunction()
+        executeNextTask()
     }
     
     func payMerchant() {
@@ -642,7 +642,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
             print ("Advertisement Data : \(advertisementData)")
             blePeripheral = peripheral
         }
-        executeNextFunction()
+        executeNextTask()
     }
     
     /**
@@ -737,7 +737,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         if (characteristic.isNotifying) {
             print ("Subscribed. Notification has begun for: \(characteristic.uuid)")
         }
-        executeNextFunction()
+        executeNextTask()
     }
 
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
