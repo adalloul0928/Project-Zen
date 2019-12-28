@@ -132,8 +132,8 @@ class ViewController: UIViewController {
 //        let configuration = AWSServiceConfiguration(region:.USWest2, credentialsProvider:credentialsProvider)
 //        AWSServiceManager.default().defaultServiceConfiguration = configuration
         
-        let accessKey = "AKIA36UIUYOEIDYEOI4N"
-        let secretKey = "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"
+        let accessKey = "..."
+        let secretKey = "..."
         
         let credentialsProvider = AWSStaticCredentialsProvider(accessKey: accessKey, secretKey: secretKey)
         let configuration = AWSServiceConfiguration(region: AWSRegionType.USWest2, credentialsProvider: credentialsProvider)
