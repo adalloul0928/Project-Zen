@@ -31,34 +31,42 @@ class BluetoothController: CBCentralManagerDelegate, CBPeripheralDelegate {
     var centralManager : CBCentralManager?
     var bluetoothOffLabel = 0.0
     
-    // These variables capture the state of the HSM proxy
-    let BLEService_UUID = CBUUID(string: UART_SERVICE_ID)
-    let BLE_Characteristic_uuid_Rx = CBUUID(string: UART_WRITE_ID)
-    let BLE_Characteristic_uuid_Tx = CBUUID(string: UART_NOTIFICATION_ID)
+    let BLEService_UUID : CBUUID?
+    let BLE_Characteristic_uuid_Rx : CBUUID?
+    let BLE_Characteristic_uuid_Tx : CBUUID?
     
     // Request and response related attributes
     var numBlocks : Int = 0
     var request : [UInt8]?
     var requestType : UInt8?
+    
+    var view : ViewController?
  
     // Timer for connecting to peripheral - will display "not connected" after 10 seconds if cannot find peripheral
     var isConnected = false
     
-    init() {
+    init(_ view: ViewController) {
         // central manager object is the iphone device
         self.centralManager = CBCentralManager(delegate: self, queue: nil)
+        
+        self.view = view
+        
+        // These variables capture the state of the HSM proxy
+        BLEService_UUID = CBUUID(string: UART_SERVICE_ID)
+        BLE_Characteristic_uuid_Rx = CBUUID(string: UART_WRITE_ID)
+        BLE_Characteristic_uuid_Tx = CBUUID(string: UART_NOTIFICATION_ID)
     }
     /**
      * This function is called to start scanning for peripherals specifically with the correct services.
      */
     func startScan() {
         print("Now Scanning...")
-        centralManager?.scanForPeripherals(withServices: [BLEService_UUID] , options: nil)
+        centralManager?.scanForPeripherals(withServices: [self.BLEService_UUID!] , options: nil)
         DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) { // the desired number of seconds delay
             // Code you want to be delayed
-            if isConnected == false {
+            if self.isConnected == false {
                 ProgressHUD.showError("No Connection")
-                stopScan()
+                self.stopScan()
             }
         }
     }
@@ -74,28 +82,18 @@ class BluetoothController: CBCentralManagerDelegate, CBPeripheralDelegate {
     
     // Size of blocks sent to peripheral. (512 - 2 = 510, to account for the two leading bytes which tell peripheral what to do
     let BLOCK_SIZE : Int = 510
-
+    
     /**
-     * This function formats a request into a binary format prior to sending it via bluetooth.
-     * Each request has the following byte format:
-     *   Request (1 byte) [0..255]
-     *   Number of Arguments (1 byte) [0..255]
-     *   Length of Argument 1 (2 bytes) [0..65535]
-     *   Argument 1 ([0..65535] bytes)
-     *   Length of Argument 2 (2 bytes) [0..65535]
-     *   Argument 2 ([0..65535] bytes)
-     *      ...
-     *   Length of Argument N (2 bytes) [0..65535]
-     *   Argument N ([0..65535] bytes)
+     * This function sends a request to a BLEUart service for processing (utilizing the processBlock function)
      *
-     * If the entire request is only a single byte long then the number of arguments
-     * is assumed to be zero.
-     
-     * @param type A string representing the type of the request.
-     * @param args Zero or more byte arrays containing the bytes for each argument.
-     * @returns A byte array containing the bytes for the entire request.
+     * Note: A BLEUart service can only handle requests up to 512 bytes in length. If the
+     * specified request is longer than this limit, it is broken up into separate 512 byte
+     * blocks and each block is sent as a separate BLE request.
+     *
+     * @param request A byte array containing the request to be processed.
      */
-    func formatRequest(_ type : String, _ args : [UInt8]?...) -> [UInt8] {
+    func processRequest(type : String, _ args : [UInt8]...) {
+        
         switch(type) {
         case "loadBlocks":
             requestType = 0
@@ -117,28 +115,17 @@ class BluetoothController: CBCentralManagerDelegate, CBPeripheralDelegate {
         request = [requestType!, UInt8(args.count)]
         var length : Int
         for arg in args {
-            length = arg!.count
-            request += [UInt8(length >> 8), UInt8(length & 0xFF)] // the length of this argument
-            request += arg! // the argument bytes
+            length = arg.count
+            request! += [UInt8(length >> 8), UInt8(length & 0xFF)] // the length of this argument
+            request! += arg // the argument bytes
         }
         print("Request: \(request)")
-        return request
-    }
-    
-    /**
-     * This function sends a request to a BLEUart service for processing (utilizing the processBlock function)
-     *
-     * Note: A BLEUart service can only handle requests up to 512 bytes in length. If the
-     * specified request is longer than this limit, it is broken up into separate 512 byte
-     * blocks and each block is sent as a separate BLE request.
-     *
-     * @param request A byte array containing the request to be processed.
-     */
-    func processRequest(_ request : [UInt8]) {
+        
+        
         var buffer : [UInt8]
         var offset : Int
         var blockSize : Int
-        var temp : Double = Double(request.count - 2) / Double(BLOCK_SIZE)
+        var temp : Double = Double(request!.count - 2) / Double(BLOCK_SIZE)
         // refactor later to make numBlocks equivalent to numExtraBlocks and change according code
         numBlocks = Int(temp.rounded(.up))
         
@@ -148,14 +135,14 @@ class BluetoothController: CBCentralManagerDelegate, CBPeripheralDelegate {
             offset = (numBlocks - 1) * BLOCK_SIZE + 2
             
             // calculate the current block size
-            blockSize = min(request.count - offset, BLOCK_SIZE)
+            blockSize = min(request!.count - offset, BLOCK_SIZE)
             
             // concatenate a header and the current block bytes
-            buffer = [0x00, UInt8(numBlocks - 1)] + Array(request[offset ..< (offset + blockSize)])
+            buffer = [0x00, UInt8(numBlocks - 1)] + Array(request![offset ..< (offset + blockSize)])
         } else {
             print("NumBlocks: \(numBlocks)")
-            blockSize = min(request.count, BLOCK_SIZE + 2);
-            buffer = Array(request[0..<blockSize])  // includes the actual header
+            blockSize = min(request!.count, BLOCK_SIZE + 2);
+            buffer = Array(request![0..<blockSize])  // includes the actual header
         }
         numBlocks -= 1
         processBlock(buffer)
@@ -214,7 +201,7 @@ class BluetoothController: CBCentralManagerDelegate, CBPeripheralDelegate {
             print ("Advertisement Data : \(advertisementData)")
             blePeripheral = peripheral
         }
-        executeNextTask()
+        view?.executeNextTask()
     }
     
     /**
@@ -233,7 +220,7 @@ class BluetoothController: CBCentralManagerDelegate, CBPeripheralDelegate {
         //Discovery callback
         peripheral.delegate = self
         //Only look for services that matches transmit uuid
-        peripheral.discoverServices([BLEService_UUID])
+        peripheral.discoverServices([BLEService_UUID!])
     }
     
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
@@ -309,7 +296,7 @@ class BluetoothController: CBCentralManagerDelegate, CBPeripheralDelegate {
         if (characteristic.isNotifying) {
             print ("Subscribed. Notification has begun for: \(characteristic.uuid)")
         }
-        executeNextTask()
+        view?.executeNextTask()
     }
 
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
@@ -329,8 +316,8 @@ class BluetoothController: CBCentralManagerDelegate, CBPeripheralDelegate {
 //            ProgressHUD.showError("Disconnected")
 //        }
         print("Successfully Disconnected")
-        EraseKeys.isEnabled = true
-        PayMerchant.isEnabled = true
+        view?.EraseKeys.isEnabled = true
+        view?.PayMerchant.isEnabled = true
     }
     
     func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {

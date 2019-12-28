@@ -109,15 +109,15 @@ class ViewController: UIViewController {
     func viewTransaction() {
         // we only need the first 8 characters of the transaction tag
         let alertMessage = """
-        TransactionId: \(transaction.transaction.prefix(9).suffix(8))
-        Date: \(transaction.date)
-        Time: \(transaction.time)
-        Merchant: \(transaction.merchant)
-        Amount: \(transaction.amount)
+        TransactionId: \(transaction?.transaction.prefix(9).suffix(8))
+        Date: \(transaction?.date)
+        Time: \(transaction?.time)
+        Merchant: \(transaction?.merchant)
+        Amount: \(transaction?.amount)
         """
         let alert = UIAlertController(title: "Pay Merchant", message: alertMessage, preferredStyle: .alert)
-        let approvePayment = UIAlertAction(title: "Pay", style: .default, handler: { (UIAlertAction) in signTransaction()})
-        let cancelPayment = UIAlertAction(title: "Cancel", style: UIAlertAction.Style.cancel, handler: { (UIAlertAction) in cancelTransaction()})
+        let approvePayment = UIAlertAction(title: "Pay", style: .default, handler: { (UIAlertAction) in self.signTransaction()})
+        let cancelPayment = UIAlertAction(title: "Cancel", style: UIAlertAction.Style.cancel, handler: { (UIAlertAction) in self.cancelTransaction()})
         
         alert.addAction(approvePayment)
         alert.addAction(cancelPayment)
@@ -132,8 +132,8 @@ class ViewController: UIViewController {
 //        let configuration = AWSServiceConfiguration(region:.USWest2, credentialsProvider:credentialsProvider)
 //        AWSServiceManager.default().defaultServiceConfiguration = configuration
         
-//        let accessKey = ""
-//        let secretKey = ""
+        let accessKey = "AKIA36UIUYOEIDYEOI4N"
+        let secretKey = "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"
         
         let credentialsProvider = AWSStaticCredentialsProvider(accessKey: accessKey, secretKey: secretKey)
         let configuration = AWSServiceConfiguration(region: AWSRegionType.USWest2, credentialsProvider: credentialsProvider)
@@ -147,7 +147,7 @@ class ViewController: UIViewController {
         processView.layer.cornerRadius = PayMerchant.frame.size.height/2
         
         // Do any additional setup after loading the view.
-        bluetooth = BluetoothController()
+        bluetooth = BluetoothController(view : self)
     }
 
 
@@ -192,15 +192,15 @@ class ViewController: UIViewController {
 
     func checkResponse(response : [UInt8]) {
         if response[0] == 255 {
-            print("Request type \(requestType) failed with a 255 response")
+            print("Request type \(bluetooth?.requestType) failed with a 255 response")
             // reset the application state
             resetState()
         } else {
-            switch(requestType) {
+            switch(bluetooth?.requestType) {
             case 0:
                 print("Handling a process block response")
                 // process the next block
-                processRequest(request)
+                bluetooth.processRequest(request)
                 return // bypass the stack manager
             case 1:
                 print("Handling a generate keys response")
@@ -241,7 +241,7 @@ class ViewController: UIViewController {
                 
             default:
                 print("Error: received a response to an unknown request type")
-                print("  request type: \(requestType)")
+                print("  request type: \(bluetooth?.requestType)")
                 print("  response: \(response)")
                 resetState()
             }
@@ -307,8 +307,7 @@ class ViewController: UIViewController {
                     print(mobileKey)
                     // Prints something different every time you run.
                 }
-                request = formatRequest("generateKeys", mobileKey)
-                processRequest(request)
+                bluetooth?.processRequest("generateKeys", mobileKey)
             } catch {
                 print("A new key pair could not be generated")
             }
@@ -329,8 +328,7 @@ class ViewController: UIViewController {
         publicKey = nil
         mobileKey = nil
         saveKeys()
-        request = formatRequest("eraseKeys")
-        processRequest(request)
+        bluetooth?.processRequest(requestType: "eraseKeys")
     }
     
     /**
@@ -346,8 +344,7 @@ class ViewController: UIViewController {
         SignBytes.isHidden = false
         AWS_Push.isHidden = false
         let bytes: [UInt8] = Array(document!.utf8)
-        request = formatRequest("signBytes", mobileKey, bytes)
-        processRequest(request)
+        bluetooth?.processRequest(requestType: "signBytes", mobileKey, bytes)
     }
     
     /**
@@ -363,8 +360,7 @@ class ViewController: UIViewController {
      * @returns Whether or not the digital signature is valid.
      */
     func validSignature(aPublicKey : [UInt8], signature : [UInt8], bytes : [UInt8]) {
-        request = formatRequest("validSignature", aPublicKey, signature, bytes)
-        processRequest(request)
+        bluetooth?.processRequest(requestType: "validSignature", mobileKey: aPublicKey, signature, bytes)
     }
     
     func uploadDocument() {
