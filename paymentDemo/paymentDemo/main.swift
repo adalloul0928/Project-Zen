@@ -92,14 +92,6 @@ class FlowController: FlowControl {
 let controller = FlowController()
 let armorD = ArmorDProxy(controller: controller)
 
-//armorD.processRequest(type: String, _ args: [UInt8]...)
-//case "generateKeys":
-//case "rotateKeys":
-//case "eraseKeys":
-//case "digestBytes":
-//case "signBytes":
-//case "validSignature":
-
 controller.stepSucceeded(device: armorD, result: nil)
 
 print("Sleeping...")
