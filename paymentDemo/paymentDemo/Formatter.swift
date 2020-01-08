@@ -135,6 +135,10 @@ class Formatter {
         return formatter.string(from: now)
     }
 
+    func generateBytes(size: Int) -> [UInt8] {
+        return randomBytes(size: size)
+    }
+
     func generateTag() -> String {
         let bytes = randomBytes(size: TAG_SIZE)
         return "#\(base32Encode(bytes: bytes))"

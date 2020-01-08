@@ -16,7 +16,16 @@ import AWSS3
 
 
 // ViewController class adopts both the central and peripheral delegates and conforms to their protocol requirements
-class ViewController: UIViewController {
+class ViewController: UIViewController, FlowControl {
+    
+    func stepFailed(reason: String) {
+        <#code#>
+    }
+    
+    func stepSucceeded(result: Any?) {
+        <#code#>
+    }
+    
 
     // MODEL RELATED ASPECTS
     
@@ -34,7 +43,7 @@ class ViewController: UIViewController {
     var citation : Citation?
     
     // bluetooth controller
-    var bluetooth : BluetoothController?
+    var bluetooth : ArmorD?
     
 
     // VIEW RELATED ASPECTS
@@ -147,7 +156,7 @@ class ViewController: UIViewController {
         processView.layer.cornerRadius = PayMerchant.frame.size.height/2
         
         // Do any additional setup after loading the view.
-        bluetooth = BluetoothController(view : self)
+        bluetooth = ArmorDProxy(controller : self)
     }
 
 
@@ -200,7 +209,7 @@ class ViewController: UIViewController {
             case 0:
                 print("Handling a process block response")
                 // process the next block
-                bluetooth.processRequest(request)
+                bluetooth!.processRequest(type: "loadBlocks")
                 return // bypass the stack manager
             case 1:
                 print("Handling a generate keys response")
@@ -227,7 +236,7 @@ class ViewController: UIViewController {
                 print("Sign Bytes Response")
                 signDocumentCheckmark.isHidden = false
                 AWSPushCheckmark.isHidden = false
-                let signature = "'\(formatter.formatLines(formatter.base32Encode(response)))'"
+                let signature = "'\(formatter.formatLines(string: formatter.base32Encode(bytes: response)))'"
                 print("Signature: \(signature)")
                 document = Document(account: account, content: content, certificate: citation, signature: signature)
                 uploadDocument()
@@ -307,7 +316,7 @@ class ViewController: UIViewController {
                     print(mobileKey)
                     // Prints something different every time you run.
                 }
-                bluetooth?.processRequest("generateKeys", mobileKey)
+                bluetooth?.processRequest(type: "generateKeys", mobileKey)
             } catch {
                 print("A new key pair could not be generated")
             }
@@ -328,7 +337,7 @@ class ViewController: UIViewController {
         publicKey = nil
         mobileKey = nil
         saveKeys()
-        bluetooth?.processRequest(requestType: "eraseKeys")
+        bluetooth?.processRequest(type: "eraseKeys")
     }
     
     /**
@@ -344,7 +353,7 @@ class ViewController: UIViewController {
         SignBytes.isHidden = false
         AWS_Push.isHidden = false
         let bytes: [UInt8] = Array(document!.utf8)
-        bluetooth?.processRequest(requestType: "signBytes", mobileKey, bytes)
+        bluetooth?.processRequest(type: "signBytes", mobileKey, bytes)
     }
     
     /**
@@ -360,7 +369,7 @@ class ViewController: UIViewController {
      * @returns Whether or not the digital signature is valid.
      */
     func validSignature(aPublicKey : [UInt8], signature : [UInt8], bytes : [UInt8]) {
-        bluetooth?.processRequest(requestType: "validSignature", mobileKey: aPublicKey, signature, bytes)
+        bluetooth?.processRequest(type: "validSignature", aPublicKey, signature, bytes)
     }
     
     func uploadDocument() {

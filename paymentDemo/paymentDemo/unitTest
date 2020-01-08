@@ -1,0 +1,5 @@
+#!/bin/bash
+
+rm testit
+swiftc -o testit Formatter.swift Content.swift Document.swift Certificate.swift Citation.swift Transaction.swift FlowControl.swift ArmorD.swift ArmorDProxy.swift main.swift
+./testit
