@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 51;
+	objectVersion = 52;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -15,8 +15,10 @@
 		16AD5A1423107126001797FD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 16AD5A1323107126001797FD /* Assets.xcassets */; };
 		16AD5A1723107126001797FD /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 16AD5A1523107126001797FD /* LaunchScreen.storyboard */; };
 		3569A2E76DBD1B6434648F99 /* Pods_paymentDemo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B827FCE3D7EA5F7916496110 /* Pods_paymentDemo.framework */; };
-		BE187B282377542B003ABEFB /* test.jpg in Resources */ = {isa = PBXBuildFile; fileRef = BE187B272377542B003ABEFB /* test.jpg */; };
-		BEB58576238D1329000EFB65 /* test333.json in Resources */ = {isa = PBXBuildFile; fileRef = BEB58575238D1329000EFB65 /* test333.json */; };
+		BE29808123CA4904000D0A4C /* testFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE29808023CA4904000D0A4C /* testFile.swift */; };
+		BE2980B123CC004C000D0A4C /* BDN in Frameworks */ = {isa = PBXBuildFile; productRef = BE2980B023CC004C000D0A4C /* BDN */; };
+		BEBB092B23DA308D00D1D1BF /* ArmorD in Frameworks */ = {isa = PBXBuildFile; productRef = BEBB092A23DA308D00D1D1BF /* ArmorD */; };
+		BEBB092E23DA3F7F00D1D1BF /* Repository in Frameworks */ = {isa = PBXBuildFile; productRef = BEBB092D23DA3F7F00D1D1BF /* Repository */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -24,7 +26,7 @@
 		169F5DEF23108C4100AAD47E /* ProgressHUD.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = ProgressHUD.bundle; sourceTree = "<group>"; };
 		169F5DF023108C4200AAD47E /* ProgressHUD.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ProgressHUD.h; sourceTree = "<group>"; };
 		169F5DF123108C4200AAD47E /* ProgressHUD.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ProgressHUD.m; sourceTree = "<group>"; };
-		16AD5A0923107125001797FD /* ArmorD.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ArmorD.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		16AD5A0923107125001797FD /* ArmorD2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ArmorD2.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		16AD5A0C23107125001797FD /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		16AD5A0E23107125001797FD /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
 		16AD5A1123107125001797FD /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
@@ -34,8 +36,7 @@
 		1E53294409FE832AF30D381D /* Pods-paymentDemo.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-paymentDemo.debug.xcconfig"; path = "Target Support Files/Pods-paymentDemo/Pods-paymentDemo.debug.xcconfig"; sourceTree = "<group>"; };
 		B3E127F4537F7A1955186818 /* Pods-paymentDemo.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-paymentDemo.release.xcconfig"; path = "Target Support Files/Pods-paymentDemo/Pods-paymentDemo.release.xcconfig"; sourceTree = "<group>"; };
 		B827FCE3D7EA5F7916496110 /* Pods_paymentDemo.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_paymentDemo.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		BE187B272377542B003ABEFB /* test.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; name = test.jpg; path = ../../../../../../Downloads/test.jpg; sourceTree = "<group>"; };
-		BEB58575238D1329000EFB65 /* test333.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; name = test333.json; path = ../../../../../../Desktop/test333.json; sourceTree = "<group>"; };
+		BE29808023CA4904000D0A4C /* testFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = testFile.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -43,6 +44,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BE2980B123CC004C000D0A4C /* BDN in Frameworks */,
+				BEBB092B23DA308D00D1D1BF /* ArmorD in Frameworks */,
+				BEBB092E23DA3F7F00D1D1BF /* Repository in Frameworks */,
 				3569A2E76DBD1B6434648F99 /* Pods_paymentDemo.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -75,7 +79,7 @@
 		16AD5A0A23107125001797FD /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				16AD5A0923107125001797FD /* ArmorD.app */,
+				16AD5A0923107125001797FD /* ArmorD2.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -83,14 +87,13 @@
 		16AD5A0B23107125001797FD /* paymentDemo */ = {
 			isa = PBXGroup;
 			children = (
-				BEB58575238D1329000EFB65 /* test333.json */,
-				BE187B272377542B003ABEFB /* test.jpg */,
 				16AD5A0C23107125001797FD /* AppDelegate.swift */,
 				16AD5A0E23107125001797FD /* ViewController.swift */,
 				16AD5A1023107125001797FD /* Main.storyboard */,
 				16AD5A1323107126001797FD /* Assets.xcassets */,
 				16AD5A1523107126001797FD /* LaunchScreen.storyboard */,
 				16AD5A1823107126001797FD /* Info.plist */,
+				BE29808023CA4904000D0A4C /* testFile.swift */,
 			);
 			path = paymentDemo;
 			sourceTree = "<group>";
@@ -130,8 +133,13 @@
 			dependencies = (
 			);
 			name = paymentDemo;
+			packageProductDependencies = (
+				BE2980B023CC004C000D0A4C /* BDN */,
+				BEBB092A23DA308D00D1D1BF /* ArmorD */,
+				BEBB092D23DA3F7F00D1D1BF /* Repository */,
+			);
 			productName = paymentDemo;
-			productReference = 16AD5A0923107125001797FD /* ArmorD.app */;
+			productReference = 16AD5A0923107125001797FD /* ArmorD2.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -159,6 +167,11 @@
 				Base,
 			);
 			mainGroup = 16AD5A0023107125001797FD;
+			packageReferences = (
+				BE2980AF23CC004C000D0A4C /* XCRemoteSwiftPackageReference "swift-bali-document-notation" */,
+				BEBB092923DA308D00D1D1BF /* XCRemoteSwiftPackageReference "swift-bali-hsm-proxy" */,
+				BEBB092C23DA3F7F00D1D1BF /* XCRemoteSwiftPackageReference "swift-bali-document-repository" */,
+			);
 			productRefGroup = 16AD5A0A23107125001797FD /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -176,9 +189,7 @@
 				169F5DF223108C4200AAD47E /* ProgressHUD.bundle in Resources */,
 				16AD5A1723107126001797FD /* LaunchScreen.storyboard in Resources */,
 				16AD5A1423107126001797FD /* Assets.xcassets in Resources */,
-				BE187B282377542B003ABEFB /* test.jpg in Resources */,
 				16AD5A1223107125001797FD /* Main.storyboard in Resources */,
-				BEB58576238D1329000EFB65 /* test333.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -233,6 +244,7 @@
 			files = (
 				169F5DF323108C4200AAD47E /* ProgressHUD.m in Sources */,
 				16AD5A0F23107125001797FD /* ViewController.swift in Sources */,
+				BE29808123CA4904000D0A4C /* testFile.swift in Sources */,
 				16AD5A0D23107125001797FD /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -388,8 +400,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.ArenDalloul.ArmorD;
-				PRODUCT_NAME = ArmorD;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ArenDalloul.ArmorD2;
+				PRODUCT_NAME = ArmorD2;
 				SWIFT_OBJC_BRIDGING_HEADER = "Support/paymentDemo-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -410,8 +422,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.ArenDalloul.ArmorD;
-				PRODUCT_NAME = ArmorD;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ArenDalloul.ArmorD2;
+				PRODUCT_NAME = ArmorD2;
 				SWIFT_OBJC_BRIDGING_HEADER = "Support/paymentDemo-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -440,6 +452,51 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		BE2980AF23CC004C000D0A4C /* XCRemoteSwiftPackageReference "swift-bali-document-notation" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/craterdog-bali/swift-bali-document-notation";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.2;
+			};
+		};
+		BEBB092923DA308D00D1D1BF /* XCRemoteSwiftPackageReference "swift-bali-hsm-proxy" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/craterdog-bali/swift-bali-hsm-proxy";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.13;
+			};
+		};
+		BEBB092C23DA3F7F00D1D1BF /* XCRemoteSwiftPackageReference "swift-bali-document-repository" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/craterdog-bali/swift-bali-document-repository";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.6;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		BE2980B023CC004C000D0A4C /* BDN */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BE2980AF23CC004C000D0A4C /* XCRemoteSwiftPackageReference "swift-bali-document-notation" */;
+			productName = BDN;
+		};
+		BEBB092A23DA308D00D1D1BF /* ArmorD */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BEBB092923DA308D00D1D1BF /* XCRemoteSwiftPackageReference "swift-bali-hsm-proxy" */;
+			productName = ArmorD;
+		};
+		BEBB092D23DA3F7F00D1D1BF /* Repository */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BEBB092C23DA3F7F00D1D1BF /* XCRemoteSwiftPackageReference "swift-bali-document-repository" */;
+			productName = Repository;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 16AD5A0123107125001797FD /* Project object */;
 }

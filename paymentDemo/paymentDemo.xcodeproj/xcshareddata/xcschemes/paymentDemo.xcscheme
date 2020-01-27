@@ -15,7 +15,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "16AD5A0823107125001797FD"
-               BuildableName = "ArmorD.app"
+               BuildableName = "ArmorD2.app"
                BlueprintName = "paymentDemo"
                ReferencedContainer = "container:paymentDemo.xcodeproj">
             </BuildableReference>
@@ -45,7 +45,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "16AD5A0823107125001797FD"
-            BuildableName = "ArmorD.app"
+            BuildableName = "ArmorD2.app"
             BlueprintName = "paymentDemo"
             ReferencedContainer = "container:paymentDemo.xcodeproj">
          </BuildableReference>
@@ -62,7 +62,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "16AD5A0823107125001797FD"
-            BuildableName = "ArmorD.app"
+            BuildableName = "ArmorD2.app"
             BlueprintName = "paymentDemo"
             ReferencedContainer = "container:paymentDemo.xcodeproj">
          </BuildableReference>

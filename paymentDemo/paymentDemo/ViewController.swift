@@ -13,20 +13,12 @@ import Foundation
 import AVKit
 import AVFoundation
 import AWSS3
-
+import BDN
+import ArmorD
+import Repository
 
 // ViewController class adopts both the central and peripheral delegates and conforms to their protocol requirements
-class ViewController: UIViewController, FlowControl {
-    
-    func stepFailed(reason: String) {
-        <#code#>
-    }
-    
-    func stepSucceeded(result: Any?) {
-        <#code#>
-    }
-    
-
+class ViewController: UIViewController, FlowControl{
     // MODEL RELATED ASPECTS
     
     // Account tag for the user of the mobile application
@@ -34,95 +26,360 @@ class ViewController: UIViewController, FlowControl {
     
     // The keys maintained by the mobile application
     var publicKey : [UInt8]?
-    var mobileKey = [UInt8](repeating: 0, count: KEY_SIZE)  // initialize to all zeros
+//    var mobileKey : [UInt8]?  // initialize to all zeros
+    var mobileKey : [UInt8] = [UInt8](repeating: 0, count: KEY_SIZE)  // initialize to all zeros
     
     // content and documents
-    var certificate : Certificate?
-    var transaction : Transaction?
-    var document : Document?
-    var citation : Citation?
+    var certificate : Document?
+    var transaction : Document?
+    var transactionContent : Transaction?
+    var documentSignature : [UInt8]?
+//    var document : Document?
+    var certificateCitation : Citation?
+    var transactionCitation : Citation?
+    var credentials : Document?
     
     // bluetooth controller
-    var bluetooth : ArmorD?
+    var armorD : ArmorD?
     
+    // attempts if getting a failure from ArmorD device
+    var attempts = 5
+    
+    // global stack for function calls
+    var taskQueue : [functionCalls]?
 
     // VIEW RELATED ASPECTS
 
     @IBOutlet weak var PayMerchant: UIButton!
-
-    @IBOutlet weak var ConnectDevice: UILabel!
     
-    @IBOutlet weak var GenerateKeys: UILabel!
-    
-    @IBOutlet weak var SignBytes: UILabel!
-    
-    @IBOutlet weak var AWS_Push: UILabel!
-    
-    @IBOutlet weak var DisconnectDevice: UILabel!
-    
-    @IBOutlet weak var closeButton: UIButton!
-    
-    @IBOutlet weak var connectCheckmark: UIImageView!
-    
-    @IBOutlet weak var generateKeysCheckmark: UIImageView!
-    
-    @IBOutlet weak var signDocumentCheckmark: UIImageView!
-    
-    @IBOutlet weak var AWSPushCheckmark: UIImageView!
-    
-    @IBOutlet weak var disconnectCheckmark: UIImageView!
-    
-    @IBOutlet weak var processView: UIView!
+    @IBOutlet weak var generateKeysLabel: UIButton!
     
     @IBOutlet weak var EraseKeys: UIButton!
     
+    @IBOutlet weak var generateKeysPopup: UILabel!
+    
+    @IBOutlet weak var signBytesPopup: UILabel!
+    
+    @IBOutlet weak var AWS_PushPopup: UILabel!
+    
+    @IBOutlet weak var closeTransactionButton: UIButton!
+    
+    @IBOutlet weak var closeCertificateButton: UIButton!
+    
+    @IBOutlet weak var generateKeysCheckmark: UIImageView!
+    
+    @IBOutlet weak var notarizeCertificateCheckmark: UIImageView!
+    
+    @IBOutlet weak var AWSPushCertCheckmark: UIImageView!
+    
+    @IBOutlet weak var notarizeTransCheckmark: UIImageView!
+    
+    @IBOutlet weak var AWSPushTransCheckmark: UIImageView!
+    
+    @IBOutlet weak var certificateView: UIView!
+    
+    @IBOutlet weak var transactionView: UIView!
+    
+    // function for closing the pop up for the payment transaction
     @IBAction func closeAnimation(_ sender: UIButton) {
-        processView.isHidden = true
+        generateKeysCheckmark.isHidden = true
+        notarizeCertificateCheckmark.isHidden = true
+        AWSPushCertCheckmark.isHidden = true
+        
+        notarizeTransCheckmark.isHidden = true
+        AWSPushTransCheckmark.isHidden = true
+        
+        transactionView.isHidden = true
+        certificateView.isHidden = true
+        
+        EraseKeys.isEnabled = true
+        PayMerchant.isEnabled = true
         view.backgroundColor = UIColor.white
-        print("Closing the application")
+        
+        print("Closing the popup")
     }
     
     // This function is called when the "Erase Keys" button is pressed
     @IBAction func eraseButton(_ sender: UIButton) {
         PayMerchant.isEnabled = false
         EraseKeys.isEnabled = false
-        taskStack = [
-            .disconnectDevice,
+        generateKeysLabel.isEnabled = false
+        
+        taskQueue = [
             .eraseKeys,
-            .connectDevice
         ]
         executeNextTask()
     }
     
     // This function is called when the "Pay Merchant" button is pressed
-    @IBAction func buttonPressed(_ sender: UIButton) {
+    @IBAction func payMerchant(_ sender: UIButton) {
         PayMerchant.isEnabled = false
         EraseKeys.isEnabled = false
-        closeButton.isEnabled = false
+        generateKeysLabel.isEnabled = false
+
+        AWSPushTransCheckmark.isHidden = true
+        notarizeTransCheckmark.isHidden = true
         
-        connectCheckmark.isHidden = true
-        signDocumentCheckmark.isHidden = true
-        AWSPushCheckmark.isHidden = true
-        disconnectCheckmark.isHidden = true
+        closeTransactionButton.isEnabled = false
+
+        viewTransaction()
+    }
+    
+    @IBAction func generateKeysAction(_ sender: UIButton) {
+        PayMerchant.isEnabled = false
+        EraseKeys.isEnabled = false
+        generateKeysLabel.isEnabled = false
         
-        taskStack = [
-            .disconnectDevice,
-            .uploadDocument,
-            .signDocument,
-            .connectDevice,
-            .viewTransaction
+        certificateView.isHidden = false
+        
+        closeCertificateButton.isEnabled = false
+        
+        taskQueue = [
+            .generateKeys,
+            .signCertificate,
+            .citeDocument
         ]
         executeNextTask()
     }
     
+    
+    // This function is called when the application is done loading the view structure
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        let accessKey = "..."
+        let secretKey = "..."
+        
+        let credentialsProvider = AWSStaticCredentialsProvider(accessKey: accessKey, secretKey: secretKey)
+        let configuration = AWSServiceConfiguration(region: AWSRegionType.USWest2, credentialsProvider: credentialsProvider)
+        AWSServiceManager.default().defaultServiceConfiguration = configuration
+        
+        taskQueue = [
+        .loadKeys
+        ]
+
+        // Rounded edges for buttons
+        PayMerchant.layer.cornerRadius = PayMerchant.frame.size.height/2
+        generateKeysLabel.layer.cornerRadius = PayMerchant.frame.size.height/2
+        transactionView.layer.cornerRadius = PayMerchant.frame.size.height/2
+        certificateView.layer.cornerRadius = PayMerchant.frame.size.height/2
+        
+        generateKeysCheckmark.isHidden = true
+        notarizeCertificateCheckmark.isHidden = true
+        AWSPushCertCheckmark.isHidden = true
+        
+        notarizeTransCheckmark.isHidden = true
+        AWSPushTransCheckmark.isHidden = true
+        
+        transactionView.isHidden = true
+        certificateView.isHidden = true
+        
+        // Do any additional setup after loading the view.
+        armorD = ArmorDProxy(controller : self)
+    }
+
+    func stepFailed(device: ArmorD, error: String) {
+        print("Failure")
+        let currFunction : functionCalls = taskQueue![0]
+        switch(currFunction) {
+            case .generateKeys:
+                print("Generate Keys Failed")
+            case .signCertificate:
+                print("Sign Document Failed")
+            case .signTransaction:
+                print("Sign Transaction Failed")
+            case .eraseKeys:
+                EraseKeys.isEnabled = true
+                print("Erase Keys Failed")
+            default:
+                print("Default Case - Step failed")
+        }
+        view.layoutIfNeeded()
+        if attempts > 0{
+            attempts -= 1
+            usleep(1000000) // 1 second
+            print("Attempt's left #\(attempts)")
+            executeNextTask()
+        }
+        else {
+            taskQueue = []
+            attempts = 5
+            closeTransactionButton.isEnabled = true
+            closeCertificateButton.isEnabled = true
+            print("Device failed too many times.")
+            // generate certificate / keys failed
+            if publicKey == nil{
+                generateKeysCheckmark.isHidden = true
+                notarizeCertificateCheckmark.isHidden = true
+                AWSPushCertCheckmark.isHidden = true
+                
+                certificateView.isHidden = true
+                
+                EraseKeys.isEnabled = false
+                generateKeysLabel.isEnabled = true
+                PayMerchant.isEnabled = false
+            }
+            // transaction failed
+            else{
+                notarizeTransCheckmark.isHidden = true
+                AWSPushTransCheckmark.isHidden = true
+                
+                transactionView.isHidden = true
+                
+                EraseKeys.isEnabled = true
+                generateKeysLabel.isEnabled = false
+                PayMerchant.isEnabled = true
+            }
+        }
+        // need to add what happens if failed. Reset everything.
+    }
+    
+//    func nextStep(device: ArmorD, result: [UInt8]?) {
+//        print("Success")
+//        attempts = 5 // reset attempts to five on a success
+//        let currFunction : functionCalls = taskQueue!.removeFirst()
+//        switch(currFunction) {
+//            case .loadKeys:
+//                print("Loading the keys if saved")
+//                loadKeys()
+//            case .generateKeys:
+//                print("Result: \(result)")
+//                publicKey = result
+//                saveKeys()
+//                generateCertificate()
+//                generateKeysCheckmark.isHidden = false
+//            case .signCertificate:
+//                documentSignature = result
+//                EraseKeys.isEnabled = true
+//                PayMerchant.isEnabled = true
+//                appendCertificateSignature()
+//                notarizeCertificateCheckmark.isHidden = false
+//            case .signTransaction:
+//                documentSignature = result
+//                notarizeTransCheckmark.isHidden = false
+//                appendTransactionSignature()
+//            case .citeCertificate:
+//                certificateCitation = Citation(tag : certificate!.content.tag, version : certificate!.content.version, digest : result!)
+//                let content = Credentials()
+//                credentials = Document(account: account, content: content, certificate : certificateCitation)
+//            case .citeTransaction:
+//                print("here")
+//            case .eraseKeys:
+//                publicKey = nil
+//                mobileKey = [UInt8](repeating: 0, count: KEY_SIZE)
+//                saveKeys()
+//                generateKeysLabel.isEnabled = true
+//                print("Erase Keys Success")
+//            default:
+//                print("Default Case - next step")
+//        }
+//        view.layoutIfNeeded()
+//        if !(taskQueue!.isEmpty){
+//            executeNextTask()
+//        }
+//    }
+    
+    func nextStep(device: ArmorD, result: [UInt8]?) {
+        print("Success")
+        attempts = 5 // reset attempts to five on a success
+        let currFunction : functionCalls = taskQueue!.removeFirst()
+        switch(currFunction) {
+            case .loadKeys:
+                print("Loading the keys if saved")
+                loadKeys()
+            case .generateKeys:
+                print("Result: \(result)")
+                publicKey = result
+                saveKeys()
+                generateCertificate()
+                generateKeysCheckmark.isHidden = false
+            case .signCertificate:
+                documentSignature = result
+                EraseKeys.isEnabled = true
+                PayMerchant.isEnabled = true
+                appendCertificateSignature()
+                notarizeCertificateCheckmark.isHidden = false
+            case .signTransaction:
+                documentSignature = result
+                notarizeTransCheckmark.isHidden = false
+                appendTransactionSignature()
+            case .citeCertificate:
+                certificateCitation = Citation(tag : certificate!.content.tag, version : certificate!.content.version, digest : result!)
+                let content = Credentials()
+                credentials = Document(account: account, content: content, certificate : certificateCitation)
+            case .citeTransaction:
+                print("here")
+            case .eraseKeys:
+                publicKey = nil
+                mobileKey = [UInt8](repeating: 0, count: KEY_SIZE)
+                saveKeys()
+                generateKeysLabel.isEnabled = true
+                print("Erase Keys Success")
+            default:
+                print("Default Case - next step")
+        }
+        view.layoutIfNeeded()
+        if !(taskQueue!.isEmpty){
+            executeNextTask()
+        }
+    }
+
+    enum functionCalls {
+        case loadKeys
+        case generateKeys
+        case signCertificate
+        case citeCertificate
+        case signTransaction
+        case citeTransaction
+        case eraseKeys
+    }
+    
+    func executeNextTask() {
+        let nextFunction : functionCalls = taskQueue![0]
+        switch(nextFunction) {
+            case .generateKeys:
+                if publicKey == nil{generateKeys()}
+                else{nextStep(device: armorD!, result: [1])}
+            case .signCertificate:
+                signDocument(document : certificate)
+            case .signTransaction:
+                signDocument(document : transaction)
+            case .citeCertificate:
+                citeDocument(document: certificate)
+            case .citeTransaction:
+                citeDocument(document: transaction)
+            case .eraseKeys:
+                print("Erasing Keys")
+                armorD!.processRequest(type: "eraseKeys")
+//                eraseKeys()
+            default:
+                print("Default Case - Next task")
+        }
+        view.layoutIfNeeded()
+    }
+    
+    
+    /**
+    * This function generates a new document
+    */
+    func generateCertificate(){
+        let account = formatter.generateTag()
+//        let publicKeyString = formatter.base32Encode(bytes: publicKey!)
+//        print("publicKeyString \(publicKeyString)")
+        let content = Certificate(publicKey: publicKey!)
+        certificate = Document(account: account, content: content)
+    }
+
+    // Creates a dummy transaction and then presents a popup for the viewer
     func viewTransaction() {
         // we only need the first 8 characters of the transaction tag
+        generateTransaction()
         let alertMessage = """
-        TransactionId: \(transaction?.transaction.prefix(9).suffix(8))
-        Date: \(transaction?.date)
-        Time: \(transaction?.time)
-        Merchant: \(transaction?.merchant)
-        Amount: \(transaction?.amount)
+        TransactionId: \(transactionContent?.transaction.prefix(9).suffix(8))
+        Date: \(transactionContent?.date)
+        Time: \(transactionContent?.time)
+        Merchant: \(transactionContent?.merchant)
+        Amount: \(transactionContent?.amount)
         """
         let alert = UIAlertController(title: "Pay Merchant", message: alertMessage, preferredStyle: .alert)
         let approvePayment = UIAlertAction(title: "Pay", style: .default, handler: { (UIAlertAction) in self.signTransaction()})
@@ -134,151 +391,38 @@ class ViewController: UIViewController, FlowControl {
         present(alert, animated: true, completion: nil)
     }
     
-    // This function is called when the application is done loading the view structure
-    override func viewDidLoad() {
-        super.viewDidLoad()
-//        let credentialsProvider = AWSCognitoCredentialsProvider(regionType:.USWest2, identityPoolId:"us-west-2:da2059d0-c5ab-48d1-bfb7-d90772984bfe")
-//        let configuration = AWSServiceConfiguration(region:.USWest2, credentialsProvider:credentialsProvider)
-//        AWSServiceManager.default().defaultServiceConfiguration = configuration
-        
-        let accessKey = "..."
-        let secretKey = "..."
-        
-        let credentialsProvider = AWSStaticCredentialsProvider(accessKey: accessKey, secretKey: secretKey)
-        let configuration = AWSServiceConfiguration(region: AWSRegionType.USWest2, credentialsProvider: credentialsProvider)
-        AWSServiceManager.default().defaultServiceConfiguration = configuration
-        
-        // Initialize the state of the application
-        resetState()
-
-        // Rounded edges for buttons
-        PayMerchant.layer.cornerRadius = PayMerchant.frame.size.height/2
-        processView.layer.cornerRadius = PayMerchant.frame.size.height/2
-        
-        // Do any additional setup after loading the view.
-        bluetooth = ArmorDProxy(controller : self)
+    func generateTransaction() {
+        let merchants = [
+            "Starbucks",
+            "BestBuy",
+            "Target",
+            "Lyft",
+            "Chipotle"
+        ]
+        let amounts = ["$7.99", "$4.95", "$5.17", "$1.14", "$21.00"]
+        let merchant = merchants[Int.random(in: 1..<merchants.count)]
+        let amount = amounts[Int.random(in: 1..<amounts.count)]
+        transactionContent = Transaction(merchant: merchant, amount: amount)
+        transaction = Document(account: account, content: transactionContent!)
     }
-
-
-    // CONTROLLER RELATED ASPECTS
-
-    enum functionCalls {
-        case connectDevice
-        case generateKeys
-        case viewTransaction
-        case payMerchant
-        case signDocument
-        case uploadDocument
-        case citeDocument
-        case uploadCitation
-        case eraseKeys
-        case disconnectDevice
-    }
-
-    // global stack for function calls
-    var taskStack : [functionCalls]?
     
-    func executeNextTask() {
-        let nextFunction = taskStack!.popLast()
-        switch(nextFunction) {
-            case .connectDevice:
-                connectToDevice()
-            case .generateKeys:
-                generateKeys()
-            case .viewTransaction:
-                viewTransaction()
-            case .signDocument:
-                signDocument()
-            case .uploadDocument:
-                uploadDocument()
-            case .eraseKeys:
-                eraseKeys()
-            default:
-                disconnectFromDevice()
-        }
-        view.layoutIfNeeded()
-    }
-
-    func checkResponse(response : [UInt8]) {
-        if response[0] == 255 {
-            print("Request type \(bluetooth?.requestType) failed with a 255 response")
-            // reset the application state
-            resetState()
-        } else {
-            switch(bluetooth?.requestType) {
-            case 0:
-                print("Handling a process block response")
-                // process the next block
-                bluetooth!.processRequest(type: "loadBlocks")
-                return // bypass the stack manager
-            case 1:
-                print("Handling a generate keys response")
-                generateKeysCheckmark.isHidden = false
-                publicKey = response
-                saveKeys()
-                print("  public key: \(publicKey)")
-                print("  mobile key: \(mobileKey)")
-            case 2:
-                // Add in saving default values
-                print("Handling a rotate keys response")
-                publicKey = response
-                print("  new public key: \(publicKey)")
-            case 3:
-                print("Handling an erase keys response")
-                if response[0] == 1 {
-                    print("The keys were erased")
-                } else if response[1] == 0 {
-                    print("The keys could NOT be erased")
-                }
-            case 4:
-                print("CASE Digest Bytes - NEED TO IMPLEMENT")
-            case 5:
-                print("Sign Bytes Response")
-                signDocumentCheckmark.isHidden = false
-                AWSPushCheckmark.isHidden = false
-                let signature = "'\(formatter.formatLines(string: formatter.base32Encode(bytes: response)))'"
-                print("Signature: \(signature)")
-                document = Document(account: account, content: content, certificate: citation, signature: signature)
-                uploadDocument()
-            case 6:
-                print("Signature Valid Response")
-                if response[0] == 1 {
-                    print("Is Valid Signature")
-                } else if response[1] == 0 {
-                    print("Signature NOT Valid")
-                }
-                
-            default:
-                print("Error: received a response to an unknown request type")
-                print("  request type: \(bluetooth?.requestType)")
-                print("  response: \(response)")
-                resetState()
-            }
-        }
+    // This function is called when the "Pay" button has been pressed
+    func signTransaction() {
+        print("Sign the transaction")
+        transactionView.isHidden = false
+        view.backgroundColor = UIColor.lightGray
+        taskQueue = [.signTransaction]
         executeNextTask()
     }
     
-    /**
-     * This function is connected to the "Connect" button to connect to the peripheral we found and will automatically
-     * call the "didConnect" function below.
-     */
-    func connectToDevice() {
-        print("Connecting to a device")
-        connectCheckmark.isHidden = false
-        bluetooth?.connect(blePeripheral!, options: nil)
-    }
-    
-    func disconnectFromDevice() {
-        print("Disconnecting from the device")
-        DisconnectDevice.isHidden = false
-        if blePeripheral != nil {
-            bluetooth?.cancelPeripheralConnection(blePeripheral!)
-            blePeripheral = nil
-        }
-        disconnectCheckmark.isHidden = false
-        closeButton.isEnabled = true
-        PayMerchant.isHidden = false
-        EraseKeys.isHidden = false
+    // This function is called when the "Cancel" button has been pressed
+    func cancelTransaction() {
+        print("Cancel the transaction")
+        transactionView.isHidden = true
+        EraseKeys.isEnabled = true
+        PayMerchant.isEnabled = true
+        view.backgroundColor = UIColor.white
+        taskQueue = []
     }
     
     func resetState() {
@@ -291,17 +435,14 @@ class ViewController: UIViewController, FlowControl {
         EraseKeys.isHidden = true
         
         // Make the process transaction view hidden along with all the different features
-        processView.isHidden = true
-        
+        transactionView.isHidden = true
+
         // load the function stack when first loading the program (generate keys, sign and upload certificate)
-        taskStack = [
-            .disconnectDevice,
-            .uploadDocument,
-            .signDocument,
+        taskQueue = [
             .generateKeys,
             .eraseKeys,
-            .connectDevice
         ]
+        executeNextTask()
     }
 
     /**
@@ -316,7 +457,7 @@ class ViewController: UIViewController, FlowControl {
                     print(mobileKey)
                     // Prints something different every time you run.
                 }
-                bluetooth?.processRequest(type: "generateKeys", mobileKey)
+                armorD!.processRequest(type: "generateKeys", mobileKey)
             } catch {
                 print("A new key pair could not be generated")
             }
@@ -332,13 +473,10 @@ class ViewController: UIViewController, FlowControl {
      *
      * @returns Whether or not the keys were successfully erased.
      */
-    func eraseKeys() {
-        print("Erasing Keys")
-        publicKey = nil
-        mobileKey = nil
-        saveKeys()
-        bluetooth?.processRequest(type: "eraseKeys")
-    }
+//    func eraseKeys() {
+//        print("Erasing Keys")
+//        armorD!.processRequest(type: "eraseKeys")
+//    }
     
     /**
      * This function generates a digital signature of the specified bytes using
@@ -348,91 +486,53 @@ class ViewController: UIViewController, FlowControl {
      * @param bytes A byte array containing the bytes to be digitally signed.
      * @returns A byte array containing the resulting digital signature.
      */
-    func signDocument() {
+    func signDocument(document: Document?) {
         print("Signing the document")
-        SignBytes.isHidden = false
-        AWS_Push.isHidden = false
-        let bytes: [UInt8] = Array(document!.utf8)
-        bluetooth?.processRequest(type: "signBytes", mobileKey, bytes)
+        let bytes: [UInt8] = Array(document!.format(level: 0).utf8)
+        armorD!.processRequest(type: "signBytes", mobileKey, bytes)
     }
     
-    /**
-     * This function uses the specified public key to determine whether or not
-     * the specified digital signature was generated using the corresponding
-     * private key on the specified bytes.
-     *
-     * @param aPublicKey A byte array containing the public key to be
-     * used to validate the signature.
-     * @param signature A byte array containing the digital signature
-     * allegedly generated using the corresponding private key.
-     * @param bytes A byte array containing the digitally signed bytes.
-     * @returns Whether or not the digital signature is valid.
-     */
-    func validSignature(aPublicKey : [UInt8], signature : [UInt8], bytes : [UInt8]) {
-        bluetooth?.processRequest(type: "validSignature", aPublicKey, signature, bytes)
+    func citeDocument(document: Document?){
+        print("cite document")
+        var bytes = [UInt8](document!.format().utf8)
+        armorD!.processRequest(type: "digestBytes", bytes)
     }
     
-    func uploadDocument() {
-        let fileManager = FileManager.default
-
-        // Write the document to a file
-        let path = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let filename = path.appendingPathComponent("document.bali")
-        do {
-            try document!.write(to: filename, atomically: true, encoding: String.Encoding.utf8)
-            print("The document was written to the file successfully.")
-        } catch let error as NSError {
-            print("Couldn't write to file: \(error.localizedDescription)")
-        }
-
-        // upload the file to AWS S3 bucket
-        let uploadRequest = AWSS3TransferManagerUploadRequest()!
-        uploadRequest.body = filename
-        uploadRequest.key = "documents/\(document.content.tag.suffix(32))/\(document.content.version).bali"
-        uploadRequest.bucket = "craterdog-bali-documents-us-west-2"
-        uploadRequest.contentType = "application/bali"
-        // uploadRequest.acl = .publicReadWrite  **DONT SET AN ACL (ACLs are obsolete)**
-        let transferManager = AWSS3TransferManager.default()
-        transferManager.upload(uploadRequest).continueWith(executor: AWSExecutor.mainThread()) { (task) -> Any? in
-            if let error = task.error {
-                print("Unable to upload the file: \(error)")
-            }
-            if task.result != nil {
-                print("The file was uploaded successfully.")
-            }
-            return nil
-        }
+    func appendTransactionSignature(){
+//        let content = transaction!.content
+//        let signatureString = formatter.base32Encode(bytes: documentSignature!)
+//        transaction = Document(account: account, content: content, certificate: certificateCitation, signature: signatureString)
+        transaction!.signature = documentSignature
+        uploadTransaction()
     }
     
-    // This function is called when the "Pay" button has been pressed
-    func signTransaction() {
-        print("Sign the transaction")
-        processView.isHidden = false
-        view.backgroundColor = UIColor.lightGray
-        taskStack = [.disconnectDevice, .uploadDocument, .signDocument, .connectDevice]
-        executeNextTask()
+    func appendCertificateSignature(){
+//        let content = certificate!.content
+//        let signatureString = formatter.base32Encode(bytes: documentSignature!)
+        certificate!.signature = documentSignature
+//        certificate = Document(account: account, content: content, signature: signatureString)
+        uploadCertificate()
     }
     
-    // This function is called when the "Cancel" button has been pressed
-    func cancelTransaction() {
-        print("Cancel the transaction")
-        processView.isHidden = false
-        view.backgroundColor = UIColor.lightGray
-        executeNextTask()
+    func uploadTransaction() {
+        AWSPushTransCheckmark.isHidden = false
+        closeTransactionButton.isEnabled = true
+        
+        let tag = certificate!.content.tag
+        let version = certificate!.content.version
+        
+        certificateCitation = Citation(tag: tag, version: version, digest: )
+        
+        print("Success uploaded transaction document")
     }
     
-    func payMerchant() {
-        var merchants = [
-            "Starbucks",
-            "BestBuy",
-            "Target",
-            "Lyft",
-            "Chipotle"
-        ]
-        var amounts = ["$7.99", "$4.95", "$5.17", "$1.14", "$21.00"]
-        var merchant = merchants[Int.random(in: 1..<merchants.count)]
-        var amount = amounts[Int.random(in: 1..<amounts.count)]
-        transaction = Transaction(merchant: merchant, amount: amount)
+    func uploadCertificate() {
+        AWSPushCertCheckmark.isHidden = false
+        closeCertificateButton.isEnabled = true
+        
+        
+        
+        print("Success uploaded certificate document")
     }
     
     func saveKeys() {
@@ -445,13 +545,16 @@ class ViewController: UIViewController, FlowControl {
         let defaults = UserDefaults.standard
         let possibleSavedPublicKey = defaults.array(forKey: "publicKey")
         let possibleSavedMobileKey = defaults.array(forKey: "mobileKey")
+        generateKeysLabel.isEnabled = true
+        EraseKeys.isEnabled = false
         
         if possibleSavedPublicKey != nil {
             publicKey = possibleSavedPublicKey as! [UInt8]
             mobileKey = possibleSavedMobileKey as! [UInt8]
+            generateKeysLabel.isEnabled = false
+            EraseKeys.isEnabled = true
         }
         print("Public key: \(publicKey)")
         print("Mobile key: \(mobileKey)")
     }
-    
 }
