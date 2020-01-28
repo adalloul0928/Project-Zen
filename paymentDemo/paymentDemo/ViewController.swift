@@ -33,10 +33,8 @@ class ViewController: UIViewController, FlowControl{
     var certificate : Document?
     var transaction : Document?
     var transactionContent : Transaction?
-    var documentSignature : [UInt8]?
-//    var document : Document?
     var certificateCitation : Citation?
-    var transactionCitation : Citation?
+    var digest: [UInt8]?
     var credentials : Document?
     
     // bluetooth controller
@@ -137,7 +135,8 @@ class ViewController: UIViewController, FlowControl{
         taskQueue = [
             .generateKeys,
             .signCertificate,
-            .citeDocument
+            .digestCertificate,
+            .signCredentials
         ]
         executeNextTask()
     }
@@ -161,6 +160,7 @@ class ViewController: UIViewController, FlowControl{
         // Rounded edges for buttons
         PayMerchant.layer.cornerRadius = PayMerchant.frame.size.height/2
         generateKeysLabel.layer.cornerRadius = PayMerchant.frame.size.height/2
+        EraseKeys.layer.cornerRadius = PayMerchant.frame.size.height/2
         transactionView.layer.cornerRadius = PayMerchant.frame.size.height/2
         certificateView.layer.cornerRadius = PayMerchant.frame.size.height/2
         
@@ -182,15 +182,21 @@ class ViewController: UIViewController, FlowControl{
         print("Failure")
         let currFunction : functionCalls = taskQueue![0]
         switch(currFunction) {
+            case .eraseKeys:
+                EraseKeys.isEnabled = true
+                print("Erase Keys Failed")
             case .generateKeys:
                 print("Generate Keys Failed")
             case .signCertificate:
                 print("Sign Document Failed")
+            case .digestCertificate:
+                print("Digest Certificate Failed")
+            case .signCredentials:
+                print("Sign Credentials Failed")
             case .signTransaction:
                 print("Sign Transaction Failed")
-            case .eraseKeys:
-                EraseKeys.isEnabled = true
-                print("Erase Keys Failed")
+            case .digestTransaction:
+                print("Digest Transaction Failed")
             default:
                 print("Default Case - Step failed")
         }
@@ -231,7 +237,6 @@ class ViewController: UIViewController, FlowControl{
                 PayMerchant.isEnabled = true
             }
         }
-        // need to add what happens if failed. Reset everything.
     }
     
 //    func nextStep(device: ArmorD, result: [UInt8]?) {
@@ -284,6 +289,12 @@ class ViewController: UIViewController, FlowControl{
         attempts = 5 // reset attempts to five on a success
         let currFunction : functionCalls = taskQueue!.removeFirst()
         switch(currFunction) {
+            case .eraseKeys:
+                print("Erase Keys Success")
+                publicKey = nil
+                mobileKey = [UInt8](repeating: 0, count: KEY_SIZE)
+                saveKeys()
+                generateKeysLabel.isEnabled = true
             case .loadKeys:
                 print("Loading the keys if saved")
                 loadKeys()
@@ -291,30 +302,27 @@ class ViewController: UIViewController, FlowControl{
                 print("Result: \(result)")
                 publicKey = result
                 saveKeys()
-                generateCertificate()
                 generateKeysCheckmark.isHidden = false
             case .signCertificate:
-                documentSignature = result
+                print("Certificate Signed")
+                notarizeCertificateCheckmark.isHidden = false
+                certificate!.signature = result
+            case .digestCertificate:
+                print("Digested certificate")
+                digest = result
+            case .signCredentials:
+                print("Credentials signed")
                 EraseKeys.isEnabled = true
                 PayMerchant.isEnabled = true
-                appendCertificateSignature()
-                notarizeCertificateCheckmark.isHidden = false
+                uploadCertificate()
             case .signTransaction:
-                documentSignature = result
+                print("Transaction signed")
                 notarizeTransCheckmark.isHidden = false
-                appendTransactionSignature()
-            case .citeCertificate:
-                certificateCitation = Citation(tag : certificate!.content.tag, version : certificate!.content.version, digest : result!)
-                let content = Credentials()
-                credentials = Document(account: account, content: content, certificate : certificateCitation)
-            case .citeTransaction:
-                print("here")
-            case .eraseKeys:
-                publicKey = nil
-                mobileKey = [UInt8](repeating: 0, count: KEY_SIZE)
-                saveKeys()
-                generateKeysLabel.isEnabled = true
-                print("Erase Keys Success")
+                transaction!.signature = result
+            case .digestTransaction:
+                print("Digested transaction")
+                digest = result
+                uploadTransaction()
             default:
                 print("Default Case - next step")
         }
@@ -325,33 +333,56 @@ class ViewController: UIViewController, FlowControl{
     }
 
     enum functionCalls {
+        case eraseKeys
         case loadKeys
         case generateKeys
         case signCertificate
-        case citeCertificate
+        case digestCertificate
+        case signCredentials
         case signTransaction
-        case citeTransaction
-        case eraseKeys
+        case digestTransaction
     }
     
     func executeNextTask() {
         let nextFunction : functionCalls = taskQueue![0]
         switch(nextFunction) {
-            case .generateKeys:
-                if publicKey == nil{generateKeys()}
-                else{nextStep(device: armorD!, result: [1])}
-            case .signCertificate:
-                signDocument(document : certificate)
-            case .signTransaction:
-                signDocument(document : transaction)
-            case .citeCertificate:
-                citeDocument(document: certificate)
-            case .citeTransaction:
-                citeDocument(document: transaction)
             case .eraseKeys:
                 print("Erasing Keys")
                 armorD!.processRequest(type: "eraseKeys")
-//                eraseKeys()
+            case .generateKeys:
+                if publicKey == nil{
+                    mobileKey = formatter.generateBytes(size: 32)
+                    armorD!.processRequest(type: "generateKeys", mobileKey)
+                }
+                else{nextStep(device: armorD!, result: [1])}
+            case .signCertificate:
+                if publicKey != nil{
+                    let content = Certificate(publicKey: publicKey!)
+                    certificate = Document(account: account, content: content)
+                    let bytes: [UInt8] = Array(certificate!.format(level: 0).utf8)
+                    armorD!.processRequest(type: "signBytes", mobileKey, bytes)
+//                    signDocument(document : certificate)
+                }
+                else{print("Public Key does not exist. Notarizing failed.")}
+            case .digestCertificate:
+                print("digestBytes")
+                let bytes = [UInt8](certificate!.format().utf8)
+                armorD!.processRequest(type: "digestBytes", bytes)
+            case .signCredentials:
+                let tag = certificate!.content.tag
+                let version = certificate!.content.version
+                certificateCitation = Citation(tag: tag, version: version, digest: digest!)
+                let content = Credentials()
+                credentials = Document(account: account, content: content, certificate: certificateCitation)
+                let bytes = [UInt8](credentials!.format().utf8)
+                armorD!.processRequest(type: "signBytes", mobileKey, bytes)
+            case .signTransaction:
+                let bytes = [UInt8](transaction!.format().utf8)
+                armorD!.processRequest(type: "signBytes", mobileKey, bytes)
+//                signDocument(document : transaction)
+            case .digestTransaction:
+                let bytes = [UInt8](transaction!.format().utf8)
+                armorD!.processRequest(type: "digestBytes", bytes)
             default:
                 print("Default Case - Next task")
         }
@@ -362,13 +393,13 @@ class ViewController: UIViewController, FlowControl{
     /**
     * This function generates a new document
     */
-    func generateCertificate(){
-        let account = formatter.generateTag()
-//        let publicKeyString = formatter.base32Encode(bytes: publicKey!)
-//        print("publicKeyString \(publicKeyString)")
-        let content = Certificate(publicKey: publicKey!)
-        certificate = Document(account: account, content: content)
-    }
+//    func generateCertificate(){
+//        let account = formatter.generateTag()
+////        let publicKeyString = formatter.base32Encode(bytes: publicKey!)
+////        print("publicKeyString \(publicKeyString)")
+//        let content = Certificate(publicKey: publicKey!)
+//        certificate = Document(account: account, content: content)
+//    }
 
     // Creates a dummy transaction and then presents a popup for the viewer
     func viewTransaction() {
@@ -411,7 +442,7 @@ class ViewController: UIViewController, FlowControl{
         print("Sign the transaction")
         transactionView.isHidden = false
         view.backgroundColor = UIColor.lightGray
-        taskQueue = [.signTransaction]
+        taskQueue = [.signTransaction, .digestTransaction]
         executeNextTask()
     }
     
@@ -448,25 +479,25 @@ class ViewController: UIViewController, FlowControl{
     /**
      * This function generates a new public-private key pair.
      */
-    func generateKeys() {
-        if publicKey == nil {
-            do {
-                print("Generating a new key pair.")
-                let status = SecRandomCopyBytes(kSecRandomDefault, KEY_SIZE, &mobileKey)
-                if status == errSecSuccess { // Always test the status.
-                    print(mobileKey)
-                    // Prints something different every time you run.
-                }
-                armorD!.processRequest(type: "generateKeys", mobileKey)
-            } catch {
-                print("A new key pair could not be generated")
-            }
-        } else {
-            // the key pair already exists so continue with the next step
-            generateKeysCheckmark.isHidden = false
-            executeNextTask()
-        }
-    }
+//    func generateKeys() {
+//        if publicKey == nil {
+//            do {
+//                print("Generating a new key pair.")
+//                let status = SecRandomCopyBytes(kSecRandomDefault, KEY_SIZE, &mobileKey)
+//                if status == errSecSuccess { // Always test the status.
+//                    print(mobileKey)
+//                    // Prints something different every time you run.
+//                }
+//                armorD!.processRequest(type: "generateKeys", mobileKey)
+//            } catch {
+//                print("A new key pair could not be generated")
+//            }
+//        } else {
+//            // the key pair already exists so continue with the next step
+//            generateKeysCheckmark.isHidden = false
+//            executeNextTask()
+//        }
+//    }
     
     /**
      * This function deletes any existing public-private key pairs.
@@ -486,11 +517,11 @@ class ViewController: UIViewController, FlowControl{
      * @param bytes A byte array containing the bytes to be digitally signed.
      * @returns A byte array containing the resulting digital signature.
      */
-    func signDocument(document: Document?) {
-        print("Signing the document")
-        let bytes: [UInt8] = Array(document!.format(level: 0).utf8)
-        armorD!.processRequest(type: "signBytes", mobileKey, bytes)
-    }
+//    func signDocument(document: Document?) {
+//        print("Signing the document")
+//        let bytes: [UInt8] = Array(document!.format(level: 0).utf8)
+//        armorD!.processRequest(type: "signBytes", mobileKey, bytes)
+//    }
     
     func citeDocument(document: Document?){
         print("cite document")
@@ -498,39 +529,41 @@ class ViewController: UIViewController, FlowControl{
         armorD!.processRequest(type: "digestBytes", bytes)
     }
     
-    func appendTransactionSignature(){
-//        let content = transaction!.content
-//        let signatureString = formatter.base32Encode(bytes: documentSignature!)
-//        transaction = Document(account: account, content: content, certificate: certificateCitation, signature: signatureString)
-        transaction!.signature = documentSignature
-        uploadTransaction()
-    }
+//    func appendTransactionSignature(){
+////        let content = transaction!.content
+////        let signatureString = formatter.base32Encode(bytes: documentSignature!)
+////        transaction = Document(account: account, content: content, certificate: certificateCitation, signature: signatureString)
+//        transaction!.signature = documentSignature
+//        uploadTransaction()
+//    }
     
-    func appendCertificateSignature(){
-//        let content = certificate!.content
-//        let signatureString = formatter.base32Encode(bytes: documentSignature!)
-        certificate!.signature = documentSignature
-//        certificate = Document(account: account, content: content, signature: signatureString)
-        uploadCertificate()
-    }
+//    func appendCertificateSignature(){
+//        certificate!.signature = documentSignature
+//        uploadCertificate()
+//    }
     
     func uploadTransaction() {
+        repository.writeDocument(credentials: credentials!, document: transaction!)
+        let name = "/bali/examples/transaction"
+        let tag = transaction!.content.tag
+        let version = transaction!.content.version
+        let citation = Citation(tag: tag, version: version, digest: digest!)
+        repository.writeCitation(credentials: credentials!, name: name, version: version, citation: citation)
+        
         AWSPushTransCheckmark.isHidden = false
         closeTransactionButton.isEnabled = true
-        
-        let tag = certificate!.content.tag
-        let version = certificate!.content.version
-        
-        certificateCitation = Citation(tag: tag, version: version, digest: )
         
         print("Success uploaded transaction document")
     }
     
     func uploadCertificate() {
+        repository.writeDocument(credentials: credentials!, document: certificate!)
+        let name = "/bali/examples/certificate"
+        let version = certificate!.content.version
+        repository.writeCitation(credentials: credentials!, name: name, version: version, citation: certificateCitation!)
+        
         AWSPushCertCheckmark.isHidden = false
         closeCertificateButton.isEnabled = true
-        
-        
         
         print("Success uploaded certificate document")
     }

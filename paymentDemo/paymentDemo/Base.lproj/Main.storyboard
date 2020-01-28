@@ -28,14 +28,6 @@
                                     <action selector="payMerchant:" destination="BYZ-38-t0r" eventType="touchUpInside" id="xbn-kw-kf7"/>
                                 </connections>
                             </button>
-                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="93m-do-Vlb">
-                                <rect key="frame" x="150" y="579" width="115" height="75"/>
-                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                <state key="normal" title="Erase Keys"/>
-                                <connections>
-                                    <action selector="eraseButton:" destination="BYZ-38-t0r" eventType="touchUpInside" id="EDt-9r-Q9D"/>
-                                </connections>
-                            </button>
                             <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" image="CraterDogLogo" translatesAutoresizingMaskIntoConstraints="NO" id="roH-HL-PKg">
                                 <rect key="frame" x="58" y="86" width="298" height="159"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
@@ -92,8 +84,20 @@
                                     <action selector="generateKeysAction:" destination="BYZ-38-t0r" eventType="touchUpInside" id="Dpp-9r-qWt"/>
                                 </connections>
                             </button>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="VPo-Dr-smb">
+                                <rect key="frame" x="77" y="602" width="260" height="64"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <color key="backgroundColor" red="0.44231314900000002" green="0.74508026439999997" blue="1" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
+                                <fontDescription key="fontDescription" name="HelveticaNeue-Bold" family="Helvetica Neue" pointSize="30"/>
+                                <state key="normal" title="Erase Keys">
+                                    <color key="titleColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                </state>
+                                <connections>
+                                    <action selector="eraseButton:" destination="BYZ-38-t0r" eventType="touchUpInside" id="AJp-iT-zO0"/>
+                                </connections>
+                            </button>
                             <view alpha="0.94999998807907104" contentMode="scaleToFill" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="qyz-YS-Z8B" userLabel="Certificate View">
-                                <rect key="frame" x="74" y="579" width="266" height="271"/>
+                                <rect key="frame" x="71" y="579" width="266" height="271"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <subviews>
                                     <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="Generate Keys" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="aX7-yo-WQl">
@@ -151,7 +155,7 @@
                         <outlet property="AWSPushCertCheckmark" destination="xu2-mD-Egq" id="d2D-XI-Qd1"/>
                         <outlet property="AWSPushTransCheckmark" destination="eKx-fT-LAX" id="9aw-SQ-UTg"/>
                         <outlet property="AWS_PushPopup" destination="eBF-jV-66i" id="wEa-hP-ThX"/>
-                        <outlet property="EraseKeys" destination="93m-do-Vlb" id="NhS-fs-1bY"/>
+                        <outlet property="EraseKeys" destination="VPo-Dr-smb" id="TyZ-sf-IGU"/>
                         <outlet property="PayMerchant" destination="6hF-Bh-piY" id="k9Q-Ee-DWQ"/>
                         <outlet property="certificateView" destination="qyz-YS-Z8B" id="8BI-DO-7MF"/>
                         <outlet property="closeCertificateButton" destination="ffD-6z-3wb" id="GET-aI-Rhe"/>
