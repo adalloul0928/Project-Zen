@@ -93,7 +93,7 @@
                                     <color key="titleColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 </state>
                                 <connections>
-                                    <action selector="eraseButton:" destination="BYZ-38-t0r" eventType="touchUpInside" id="AJp-iT-zO0"/>
+                                    <action selector="eraseKeys:" destination="BYZ-38-t0r" eventType="touchUpInside" id="AJp-iT-zO0"/>
                                 </connections>
                             </button>
                             <view alpha="0.94999998807907104" contentMode="scaleToFill" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="qyz-YS-Z8B" userLabel="Certificate View">
