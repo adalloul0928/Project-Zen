@@ -349,11 +349,11 @@ class ViewController: UIViewController, FlowControl{
     func viewTransaction() {
         generateTransaction()
         let alertMessage = """
-        TransactionId: \(transactionContent?.transaction.prefix(9).suffix(8))
-        Date: \(transactionContent?.date)
-        Time: \(transactionContent?.time)
-        Merchant: \(transactionContent?.merchant)
-        Amount: \(transactionContent?.amount)
+        TransactionId: \(transactionContent!.transaction.prefix(9).suffix(8))
+        Date: \(transactionContent!.date)
+        Time: \(transactionContent!.time)
+        Merchant: \(transactionContent!.merchant)
+        Amount: \(transactionContent!.amount)
         """
         let alert = UIAlertController(title: "Pay Merchant", message: alertMessage, preferredStyle: .alert)
         let approvePayment = UIAlertAction(title: "Pay", style: .default, handler: { (UIAlertAction) in self.signTransaction()})
@@ -451,7 +451,6 @@ class ViewController: UIViewController, FlowControl{
             generateKeysLabel.alpha = 0.5
             EraseKeys.isEnabled = true
             EraseKeys.alpha = 1.0
-            print("here")
         }
             // if there are no saved keys
         else{
@@ -461,7 +460,6 @@ class ViewController: UIViewController, FlowControl{
             generateKeysLabel.alpha = 1.0
             EraseKeys.isEnabled = false
             EraseKeys.alpha = 0.5
-            print("there")
         }
         print("Public key: \(publicKey)")
         print("Mobile key: \(mobileKey)")
