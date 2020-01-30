@@ -254,6 +254,7 @@ class ViewController: UIViewController, FlowControl{
                 digest = result
             case .signCredentials:
                 print("Credentials signed")
+                credentials!.signature = result
                 EraseKeys.isEnabled = true
                 EraseKeys.alpha = 1.0
                 PayMerchant.isEnabled = true
@@ -375,7 +376,7 @@ class ViewController: UIViewController, FlowControl{
         let merchant = merchants[Int.random(in: 1..<merchants.count)]
         let amount = amounts[Int.random(in: 1..<amounts.count)]
         transactionContent = Transaction(merchant: merchant, amount: amount)
-        transaction = Document(account: account, content: transactionContent!)
+        transaction = Document(account: account, content: transactionContent!, certificate: certificateCitation)
     }
     
     // This function is called when the "Pay" button has been pressed
