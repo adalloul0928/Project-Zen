@@ -12,7 +12,6 @@ import CoreBluetooth
 import Foundation
 import AVKit
 import AVFoundation
-import AWSS3
 import BDN
 import ArmorD
 import Repository
@@ -91,6 +90,7 @@ class ViewController: UIViewController, FlowControl{
         closeCertificateButton.isEnabled = false
         
         taskQueue = [
+            .eraseKeys,
             .generateKeys,
             .signCertificate,
             .digestCertificate,
@@ -350,8 +350,6 @@ class ViewController: UIViewController, FlowControl{
         generateTransaction()
         let alertMessage = """
         TransactionId: \(transactionContent!.transaction.prefix(9).suffix(8))
-        Date: \(transactionContent!.date)
-        Time: \(transactionContent!.time)
         Merchant: \(transactionContent!.merchant)
         Amount: \(transactionContent!.amount)
         """
