@@ -214,6 +214,7 @@ class ViewController: UIViewController, FlowControl{
                 print("Sign Credentials")
                 let tag = certificate!.content.tag
                 let version = certificate!.content.version
+//                save this certificateCitation
                 certificateCitation = Citation(tag: tag, version: version, digest: digest!)
                 let content = Credentials()
                 credentials = Document(account: account, content: content, certificate: certificateCitation)
@@ -245,6 +246,7 @@ class ViewController: UIViewController, FlowControl{
                 print("Erase Keys Success")
                 publicKey = nil
                 mobileKey = [UInt8](repeating: 0, count: KEY_SIZE)
+                versionKey = 1
                 saveKeys()
                 generateKeysLabel.isEnabled = true
                 generateKeysLabel.alpha = 1.0
@@ -423,7 +425,7 @@ class ViewController: UIViewController, FlowControl{
     }
     
     func uploadTransaction() {
-        repository.writeDocument(credentials: credentials!, document: transaction!)
+        repository.writeDocument(credentials: credentials!, digest: digest!, document: transaction!)
         let name = "/bali/examples/transaction"
         let tag = transaction!.content.tag
         let version = transaction!.content.version
@@ -439,7 +441,7 @@ class ViewController: UIViewController, FlowControl{
     }
     
     func uploadCertificate() {
-        repository.writeDocument(credentials: credentials!, document: certificate!)
+        repository.writeDocument(credentials: credentials!, digest: certificateCitation!.digest, document: certificate!)
         let name = "/bali/examples/certificate"
         let version = certificate!.content.version
         repository.writeCitation(credentials: credentials!, name: name, version: String(versionKey!), citation: certificateCitation!)
@@ -478,7 +480,7 @@ class ViewController: UIViewController, FlowControl{
         }
             // if there are no saved keys
         else{
-            versionKey = 0
+            versionKey = 1
             PayMerchant.isEnabled = false
             PayMerchant.alpha = 0.5
             generateKeysLabel.isEnabled = true
