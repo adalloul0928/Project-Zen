@@ -272,6 +272,8 @@ class ViewController: UIViewController, FlowControl{
                 EraseKeys.alpha = 1.0
                 PayMerchant.isEnabled = true
                 PayMerchant.alpha = 1.0
+                generateKeysLabel.isEnabled = false
+                generateKeysLabel.alpha = 0.5
                 uploadCertificate()
             case .signTransaction:
                 print("Transaction signed")
@@ -430,7 +432,7 @@ class ViewController: UIViewController, FlowControl{
         let tag = transaction!.content.tag
         let version = transaction!.content.version
         let citation = Citation(tag: tag, version: version, digest: digest!)
-        repository.writeCitation(credentials: credentials!, name: name, version: String(versionKey!), citation: citation)
+        repository.writeCitation(credentials: credentials!, name: name, version: ("v" + String(versionKey!)), citation: citation)
         versionKey! += 1
         saveKeys()
         
@@ -444,8 +446,7 @@ class ViewController: UIViewController, FlowControl{
         repository.writeDocument(credentials: credentials!, digest: certificateCitation!.digest, document: certificate!)
         let name = "/bali/examples/certificate"
         let version = certificate!.content.version
-        repository.writeCitation(credentials: credentials!, name: name, version: String(versionKey!), citation: certificateCitation!)
-        versionKey! += 1
+        repository.writeCitation(credentials: credentials!, name: name, version: ("v" + String(versionKey!)), citation: certificateCitation!)
         saveKeys()
         
         AWSPushCertCheckmark.isHidden = false
