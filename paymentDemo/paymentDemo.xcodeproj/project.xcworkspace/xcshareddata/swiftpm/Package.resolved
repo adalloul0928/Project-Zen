@@ -1,0 +1,34 @@
+{
+  "object": {
+    "pins": [
+      {
+        "package": "BDN",
+        "repositoryURL": "https://github.com/craterdog-bali/swift-bali-document-notation",
+        "state": {
+          "branch": null,
+          "revision": "20d04d009d306641e7f588860f3ab14998f016c2",
+          "version": "2.0.9"
+        }
+      },
+      {
+        "package": "Repository",
+        "repositoryURL": "https://github.com/craterdog-bali/swift-bali-document-repository",
+        "state": {
+          "branch": null,
+          "revision": "63df0f37dc3d2d7cc2c0e59685e401efa3c29323",
+          "version": "2.0.9"
+        }
+      },
+      {
+        "package": "ArmorD",
+        "repositoryURL": "https://github.com/craterdog-bali/swift-bali-hsm-proxy",
+        "state": {
+          "branch": null,
+          "revision": "6405a6f50b64df484dc0956fc35d96e967435c83",
+          "version": "2.0.13"
+        }
+      }
+    ]
+  },
+  "version": 1
+}

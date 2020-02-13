@@ -26,6 +26,8 @@ class ViewController: UIViewController, FlowControl{
     // The keys maintained by the mobile application
     var publicKey : [UInt8]?
     var mobileKey : [UInt8] = [UInt8](repeating: 0, count: KEY_SIZE)  // initialize to all zeros
+    var savedCredentials : [UInt8]?
+    var versionKey : Int?
     
     // content and documents
     var certificate : Document?
@@ -73,9 +75,12 @@ class ViewController: UIViewController, FlowControl{
     @IBOutlet weak var generateKeysCheckmark: UIImageView!
     @IBOutlet weak var notarizeCertificateCheckmark: UIImageView!
     @IBOutlet weak var AWSPushCertCheckmark: UIImageView!
+    @IBOutlet weak var X_GenerateKeysPop: UIImageView!
+    @IBOutlet weak var X_NotarizeCertPop: UIImageView!
     
     @IBOutlet weak var notarizeTransCheckmark: UIImageView!
     @IBOutlet weak var AWSPushTransCheckmark: UIImageView!
+    @IBOutlet weak var X_NotarizeTransPop: UIImageView!
     
     // MARK: VIEW BUTTON ACTIONS
     
@@ -170,6 +175,9 @@ class ViewController: UIViewController, FlowControl{
         AWSPushTransCheckmark.isHidden = true
         transactionView.isHidden = true
         certificateView.isHidden = true
+        X_GenerateKeysPop.isHidden = true
+        X_NotarizeCertPop.isHidden = true
+        X_NotarizeTransPop.isHidden = true
         
         // Do any additional setup after loading the view.
         armorD = ArmorDProxy(controller : self)
@@ -227,6 +235,9 @@ class ViewController: UIViewController, FlowControl{
     
     func nextStep(device: ArmorD, result: [UInt8]?) {
         print("Success")
+        X_GenerateKeysPop.isHidden = true
+        X_NotarizeCertPop.isHidden = true
+        X_NotarizeTransPop.isHidden = true
         attempts = 5 // reset attempts to five on a success
         let currFunction : functionCalls = taskQueue!.removeFirst()
         switch(currFunction) {
@@ -286,20 +297,24 @@ class ViewController: UIViewController, FlowControl{
                 EraseKeys.alpha = 1.0
                 print("Erase Keys Failed")
             case .generateKeys:
+                X_GenerateKeysPop.isHidden = false
                 print("Generate Keys Failed")
             case .signCertificate:
+                X_NotarizeCertPop.isHidden = false
                 print("Sign Document Failed")
             case .digestCertificate:
                 print("Digest Certificate Failed")
             case .signCredentials:
                 print("Sign Credentials Failed")
             case .signTransaction:
+                X_NotarizeTransPop.isHidden = false
                 print("Sign Transaction Failed")
             case .digestTransaction:
                 print("Digest Transaction Failed")
             default:
                 print("Default Case - Step failed")
         }
+        
         view.layoutIfNeeded()
         if attempts > 0{
             attempts -= 1
@@ -310,11 +325,14 @@ class ViewController: UIViewController, FlowControl{
         else {
             taskQueue = []
             attempts = 5
+            X_GenerateKeysPop.isHidden = true
+            X_NotarizeCertPop.isHidden = true
+            X_NotarizeTransPop.isHidden = true
             closeTransactionButton.isEnabled = true
             closeCertificateButton.isEnabled = true
             print("Device failed too many times.")
             // generate certificate / keys failed
-            ProgressHUD.showError("Failure")
+//            ProgressHUD.showError("Failure")
             if publicKey == nil{
                 generateKeysCheckmark.isHidden = true
                 notarizeCertificateCheckmark.isHidden = true
@@ -410,7 +428,9 @@ class ViewController: UIViewController, FlowControl{
         let tag = transaction!.content.tag
         let version = transaction!.content.version
         let citation = Citation(tag: tag, version: version, digest: digest!)
-        repository.writeCitation(credentials: credentials!, name: name, version: version, citation: citation)
+        repository.writeCitation(credentials: credentials!, name: name, version: String(versionKey!), citation: citation)
+        versionKey! += 1
+        saveKeys()
         
         AWSPushTransCheckmark.isHidden = false
         closeTransactionButton.isEnabled = true
@@ -422,7 +442,9 @@ class ViewController: UIViewController, FlowControl{
         repository.writeDocument(credentials: credentials!, document: certificate!)
         let name = "/bali/examples/certificate"
         let version = certificate!.content.version
-        repository.writeCitation(credentials: credentials!, name: name, version: version, citation: certificateCitation!)
+        repository.writeCitation(credentials: credentials!, name: name, version: String(versionKey!), citation: certificateCitation!)
+        versionKey! += 1
+        saveKeys()
         
         AWSPushCertCheckmark.isHidden = false
         closeCertificateButton.isEnabled = true
@@ -434,16 +456,19 @@ class ViewController: UIViewController, FlowControl{
         let defaults = UserDefaults.standard
         defaults.set(publicKey, forKey: "publicKey")
         defaults.set(mobileKey, forKey: "mobileKey")
+        defaults.set(versionKey, forKey: "versionKey")
     }
     
     func loadKeys() {
         let defaults = UserDefaults.standard
         let possibleSavedPublicKey = defaults.array(forKey: "publicKey")
         let possibleSavedMobileKey = defaults.array(forKey: "mobileKey")
+        let possibleSavedVersionKey = defaults.integer(forKey: "versionKey")
         
         if possibleSavedPublicKey != nil {
             publicKey = possibleSavedPublicKey as! [UInt8]
             mobileKey = possibleSavedMobileKey as! [UInt8]
+            versionKey = possibleSavedVersionKey
             PayMerchant.isEnabled = true
             PayMerchant.alpha = 1.0
             generateKeysLabel.isEnabled = false
@@ -453,6 +478,7 @@ class ViewController: UIViewController, FlowControl{
         }
             // if there are no saved keys
         else{
+            versionKey = 0
             PayMerchant.isEnabled = false
             PayMerchant.alpha = 0.5
             generateKeysLabel.isEnabled = true
@@ -462,6 +488,7 @@ class ViewController: UIViewController, FlowControl{
         }
         print("Public key: \(publicKey)")
         print("Mobile key: \(mobileKey)")
+        print("Version key: \(versionKey)")
     }
     
     func resetState() {

@@ -6,10 +6,5 @@ target 'paymentDemo' do
   use_frameworks!
 
   # Pods for paymentDemo
-  pod 'ProgressHUD'
-  pod 'AWSCore'
-  pod 'AWSCognito'
-  pod 'AWSS3'
-  pod 'MBProgressHUD', '~> 1.1.0'
 
 end

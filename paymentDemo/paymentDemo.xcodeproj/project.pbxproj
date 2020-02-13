@@ -7,8 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		169F5DF223108C4200AAD47E /* ProgressHUD.bundle in Resources */ = {isa = PBXBuildFile; fileRef = 169F5DEF23108C4100AAD47E /* ProgressHUD.bundle */; };
-		169F5DF323108C4200AAD47E /* ProgressHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = 169F5DF123108C4200AAD47E /* ProgressHUD.m */; };
 		16AD5A0D23107125001797FD /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16AD5A0C23107125001797FD /* AppDelegate.swift */; };
 		16AD5A0F23107125001797FD /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16AD5A0E23107125001797FD /* ViewController.swift */; };
 		16AD5A1223107125001797FD /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 16AD5A1023107125001797FD /* Main.storyboard */; };
@@ -22,10 +20,6 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		169F5DEE23108C4100AAD47E /* paymentDemo-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "paymentDemo-Bridging-Header.h"; sourceTree = "<group>"; };
-		169F5DEF23108C4100AAD47E /* ProgressHUD.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = ProgressHUD.bundle; sourceTree = "<group>"; };
-		169F5DF023108C4200AAD47E /* ProgressHUD.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ProgressHUD.h; sourceTree = "<group>"; };
-		169F5DF123108C4200AAD47E /* ProgressHUD.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ProgressHUD.m; sourceTree = "<group>"; };
 		16AD5A0923107125001797FD /* ArmorD2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ArmorD2.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		16AD5A0C23107125001797FD /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		16AD5A0E23107125001797FD /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
@@ -57,10 +51,6 @@
 		169F5DED23108BFF00AAD47E /* Support */ = {
 			isa = PBXGroup;
 			children = (
-				169F5DEF23108C4100AAD47E /* ProgressHUD.bundle */,
-				169F5DF023108C4200AAD47E /* ProgressHUD.h */,
-				169F5DF123108C4200AAD47E /* ProgressHUD.m */,
-				169F5DEE23108C4100AAD47E /* paymentDemo-Bridging-Header.h */,
 			);
 			path = Support;
 			sourceTree = "<group>";
@@ -126,7 +116,6 @@
 				16AD5A0523107125001797FD /* Sources */,
 				16AD5A0623107125001797FD /* Frameworks */,
 				16AD5A0723107125001797FD /* Resources */,
-				CC5D8A1E44BA5CDD8D8DFBD8 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -186,7 +175,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				169F5DF223108C4200AAD47E /* ProgressHUD.bundle in Resources */,
 				16AD5A1723107126001797FD /* LaunchScreen.storyboard in Resources */,
 				BE4791D123E340B400C8A368 /* Assets.xcassets in Resources */,
 				16AD5A1223107125001797FD /* Main.storyboard in Resources */,
@@ -218,23 +206,6 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		CC5D8A1E44BA5CDD8D8DFBD8 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-paymentDemo/Pods-paymentDemo-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-paymentDemo/Pods-paymentDemo-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-paymentDemo/Pods-paymentDemo-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -242,7 +213,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				169F5DF323108C4200AAD47E /* ProgressHUD.m in Sources */,
 				16AD5A0F23107125001797FD /* ViewController.swift in Sources */,
 				BE29808123CA4904000D0A4C /* testFile.swift in Sources */,
 				16AD5A0D23107125001797FD /* AppDelegate.swift in Sources */,
